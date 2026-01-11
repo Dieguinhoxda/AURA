@@ -238,7 +238,7 @@ If AURA has helped you, consider supporting its development:
 
 ### ⚡ Bitcoin (Lightning Network)
 ```
-lnurl1dp68gurn8ghj7ampd3kx2ar0veekzar0wd5xjtnrdakj7tnhv4kxctttdehhwm30d3h82unvwqhkx6rfwd4k2u3t2yl
+classywallaby932694@getalby.com
 ```
 
 ### 🟣 Solana
