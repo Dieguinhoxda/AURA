@@ -55,7 +55,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "deploy:ipfs": "node scripts/deploy-ipfs.js"
+    "deploy:ipfs": "bun scripts/deploy-ipfs.js"
   },
   "dependencies": {
     "@noble/ciphers": "^2.1.1",
@@ -97,6 +97,7 @@
     "vitest": "^4.0.16"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "bun": ">=1.0.0"
   }
 }

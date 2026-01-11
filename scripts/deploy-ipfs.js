@@ -73,7 +73,7 @@ async function build() {
 	logStep('1/4', 'Building application...');
 	
 	try {
-		execSync('npm run build', { stdio: 'inherit' });
+		execSync('bun run build', { stdio: 'inherit' });
 		logSuccess('Build completed successfully');
 	} catch (error) {
 		logError('Build failed');
