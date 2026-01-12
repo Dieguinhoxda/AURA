@@ -2,6 +2,15 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "sveltekit",
   "outputDirectory": "build",
+  "headers": [
+    {
+      "source": "/.well-known/nostr.json",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Content-Type", "value": "application/json" }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
