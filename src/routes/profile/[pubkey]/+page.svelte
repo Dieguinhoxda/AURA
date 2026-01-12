@@ -39,13 +39,46 @@
 
 	const pubkey = $derived($page.params.pubkey ?? '');
 	const isOwnProfile = $derived(authStore.pubkey === pubkey);
-	const npub = $derived(pubkey ? nip19.npubEncode(pubkey) : '');
+
+	// Safe npub encoding - handle invalid pubkeys gracefully
+	const npub = $derived.by(() => {
+		if (!pubkey) return '';
+		try {
+			return nip19.npubEncode(pubkey);
+		} catch {
+			return pubkey; // fallback to raw pubkey if encoding fails
+		}
+	});
 
 	const displayName = $derived(
 		profile?.display_name || profile?.name || truncatePubkey(pubkey || ''),
 	);
 
-	const avatarInitials = $derived(displayName.slice(0, 2).toUpperCase());
+	const avatarInitials = $derived(
+		displayName ? displayName.slice(0, 2).toUpperCase() : 'AN',
+	);
+
+	/** Fetch events using subscription (handles slow relays gracefully) */
+	function fetchWithSubscription(
+		filter: Parameters<typeof ndkService.ndk.subscribe>[0],
+		timeoutMs: number,
+	): Promise<NDKEvent[]> {
+		return new Promise((resolve) => {
+			const events: NDKEvent[] = [];
+			const sub = ndkService.ndk.subscribe(filter, {
+				closeOnEose: false,
+			});
+
+			sub.on('event', (event: NDKEvent) => {
+				events.push(event);
+			});
+
+			setTimeout(() => {
+				sub.stop();
+				resolve(events);
+			}, timeoutMs);
+		});
+	}
 
 	onMount(async () => {
 		if (!pubkey) return;
@@ -76,15 +109,15 @@
 			isLoading = false;
 		}
 
-		// Fetch notes
+		// Fetch notes using subscription (handles slow relays)
 		try {
 			const filter = {
-				kinds: [1],
+				kinds: [1 as const],
 				authors: [pubkey],
 				limit: 30,
 			};
-			const events = await ndkService.ndk.fetchEvents(filter);
-			notes = Array.from(events).sort(
+			const events = await fetchWithSubscription(filter, 8000);
+			notes = events.sort(
 				(a, b) => (b.created_at || 0) - (a.created_at || 0),
 			);
 		} catch (e) {
@@ -93,13 +126,18 @@
 			isLoadingNotes = false;
 		}
 
-		// Fetch following/follower counts
+		// Fetch following count using subscription
 		try {
-			// Following count (their kind:3 contact list)
-			const followingFilter = { kinds: [3], authors: [pubkey], limit: 1 };
-			const followingEvents =
-				await ndkService.ndk.fetchEvents(followingFilter);
-			const followingEvent = Array.from(followingEvents)[0];
+			const followingFilter = {
+				kinds: [3 as const],
+				authors: [pubkey],
+				limit: 1,
+			};
+			const followingEvents = await fetchWithSubscription(
+				followingFilter,
+				5000,
+			);
+			const followingEvent = followingEvents[0];
 			if (followingEvent) {
 				followingCount = followingEvent.tags.filter(
 					(t) => t[0] === 'p',

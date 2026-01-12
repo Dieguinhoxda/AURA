@@ -219,6 +219,28 @@ export const dbHelpers = {
 		return db.profiles.get(pubkey);
 	},
 
+	/** Search profiles by name, display_name, or nip05 */
+	async searchProfiles(query: string, limit: number = 20): Promise<UserProfile[]> {
+		const lowerQuery = query.toLowerCase();
+		const allProfiles = await db.profiles.toArray();
+		
+		return allProfiles
+			.filter((profile) => {
+				const name = (profile.name || '').toLowerCase();
+				const displayName = (profile.display_name || '').toLowerCase();
+				const nip05 = (profile.nip05 || '').toLowerCase();
+				const about = (profile.about || '').toLowerCase();
+				
+				return (
+					name.includes(lowerQuery) ||
+					displayName.includes(lowerQuery) ||
+					nip05.includes(lowerQuery) ||
+					about.includes(lowerQuery)
+				);
+			})
+			.slice(0, limit);
+	},
+
 	/** Save conversation */
 	async saveConversation(conversation: Conversation): Promise<void> {
 		await db.conversations.put(conversation);
