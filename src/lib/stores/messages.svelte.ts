@@ -28,6 +28,13 @@ function createMessagesStore() {
 	let isSending = $state(false);
 	let error = $state<string | null>(null);
 	let dmSubscriptionId: string | null = null;
+	
+	// Track seen event IDs to prevent duplicate processing
+	const seenEventIds = new Set<string>();
+	// Track if initial load is complete (EOSE received)
+	let initialLoadComplete = false;
+	// Timestamp when subscription started - events before this are historical
+	let subscriptionStartTime = 0;
 
 	// Profile cache
 	const profileCache = new Map<string, UserProfile>();
@@ -119,6 +126,9 @@ function createMessagesStore() {
 	/** Load all conversations */
 	async function loadConversations(): Promise<void> {
 		if (!authStore.pubkey) return;
+		
+		// Prevent multiple simultaneous loads
+		if (isLoading) return;
 
 		isLoading = true;
 		error = null;
@@ -131,11 +141,19 @@ function createMessagesStore() {
 				cachedConversations.map(async (c) => ({
 					...c,
 					profile: await getProfile(c.pubkey),
-					messages: []
+					messages: [],
+					// Reset unread count on load - we'll only count truly new messages
+					// This prevents phantom unreads from accumulating
+					unread_count: 0
 				}))
 			);
+			
+			// Also clear unread in DB for all conversations
+			for (const c of cachedConversations) {
+				await dbHelpers.clearUnread(c.pubkey);
+			}
 
-			// Subscribe to DMs
+			// Subscribe to DMs (only if not already subscribed)
 			subscribeToDMs();
 		} catch (e) {
 			console.error('Failed to load conversations:', e);
@@ -149,6 +167,10 @@ function createMessagesStore() {
 	function subscribeToDMs(): void {
 		if (!authStore.pubkey || dmSubscriptionId) return;
 
+		// Mark subscription start time - events after this are truly "new"
+		subscriptionStartTime = Math.floor(Date.now() / 1000);
+		initialLoadComplete = false;
+
 		const filter: NDKFilter = {
 			kinds: [4], // NIP-04 DMs
 			'#p': [authStore.pubkey],
@@ -157,13 +179,33 @@ function createMessagesStore() {
 
 		dmSubscriptionId = ndkService.subscribe(filter, { closeOnEose: false }, {
 			onEvent: async (event: NDKEvent) => {
-				await handleIncomingDM(event);
+				// Skip if we've already seen this event
+				if (seenEventIds.has(event.id)) return;
+				seenEventIds.add(event.id);
+				
+				// Determine if this is a truly new message (arrived after subscription started)
+				const isNewMessage = initialLoadComplete && 
+					(event.created_at || 0) >= subscriptionStartTime - 5; // 5s tolerance
+				
+				await handleIncomingDM(event, true, isNewMessage);
+			},
+			onEose: () => {
+				// Initial load complete - future events are truly new
+				initialLoadComplete = true;
 			}
 		});
 	}
 
-	/** Handle incoming DM */
-	async function handleIncomingDM(event: NDKEvent, persist: boolean = true): Promise<void> {
+	/** Handle incoming DM
+	 * @param event - The NDK event
+	 * @param persist - Whether to persist to DB
+	 * @param incrementUnread - Whether to increment unread count (only for truly new messages)
+	 */
+	async function handleIncomingDM(
+		event: NDKEvent, 
+		persist: boolean = true,
+		incrementUnread: boolean = false
+	): Promise<void> {
 		if (!authStore.pubkey) return;
 
 		// Determine the other party
@@ -205,24 +247,38 @@ function createMessagesStore() {
 			const messageExists = conv.messages.some((m) => m.id === message.id);
 
 			if (!messageExists) {
-				const newUnreadCount = activeConversation === otherPubkey ? 0 : conv.unread_count + 1;
+				// Only increment unread if:
+				// 1. This is a truly new message (incrementUnread = true)
+				// 2. Conversation is not currently active
+				// 3. Message is not from us (outgoing)
+				const shouldIncrement = incrementUnread && 
+					activeConversation !== otherPubkey && 
+					!message.isOutgoing;
+				
+				const newUnreadCount = shouldIncrement ? conv.unread_count + 1 : conv.unread_count;
+				
+				// Only update preview if this message is chronologically newer
+				const shouldUpdatePreview = message.created_at >= (conv.last_message_at || 0);
+				const newLastMessageAt = shouldUpdatePreview ? message.created_at : conv.last_message_at;
+				const newLastMessagePreview = shouldUpdatePreview ? (content || '').slice(0, 50) : conv.last_message_preview;
+				
 				conversations = [
 					{
 						...conv,
 						messages: [...conv.messages, message].sort((a, b) => a.created_at - b.created_at),
-						last_message_at: message.created_at,
-						last_message_preview: (content || '').slice(0, 50),
+						last_message_at: newLastMessageAt,
+						last_message_preview: newLastMessagePreview,
 						unread_count: newUnreadCount
 					},
 					...conversations.slice(0, existingIndex),
 					...conversations.slice(existingIndex + 1)
 				];
 
-				if (persist) {
-					dbHelpers.saveConversation({
+				if (persist && shouldUpdatePreview) {
+					await dbHelpers.saveConversation({
 						pubkey: otherPubkey,
-						last_message_at: message.created_at,
-						last_message_preview: (content || '').slice(0, 50),
+						last_message_at: newLastMessageAt,
+						last_message_preview: newLastMessagePreview,
 						unread_count: newUnreadCount
 					});
 				}
@@ -230,20 +286,24 @@ function createMessagesStore() {
 		} else {
 			// Create new conversation
 			const profile = await getProfile(otherPubkey);
+			
+			// Only set unread to 1 if this is a truly new incoming message
+			const newUnreadCount = (incrementUnread && !message.isOutgoing && activeConversation !== otherPubkey) ? 1 : 0;
+			
 			const newConv: ConversationWithMessages = {
 				pubkey: otherPubkey,
 				profile,
 				messages: [message],
 				last_message_at: message.created_at,
 				last_message_preview: (content || '').slice(0, 50),
-				unread_count: activeConversation === otherPubkey ? 0 : 1
+				unread_count: newUnreadCount
 			};
 
 			conversations = [newConv, ...conversations];
 
 			// Save to DB
 			if (persist) {
-				dbHelpers.saveConversation({
+				await dbHelpers.saveConversation({
 					pubkey: otherPubkey,
 					last_message_at: message.created_at,
 					last_message_preview: (content || '').slice(0, 50),
@@ -257,17 +317,21 @@ function createMessagesStore() {
 	async function openConversation(pubkey: string): Promise<void> {
 		activeConversation = pubkey;
 
-		// Clear unread count
+		// Clear unread count in memory and DB
 		const convIndex = conversations.findIndex((c) => c.pubkey === pubkey);
 		if (convIndex >= 0) {
 			conversations = conversations.map((c) =>
 				c.pubkey === pubkey ? { ...c, unread_count: 0 } : c
 			);
-			dbHelpers.clearUnread(pubkey);
+			// Await the DB update to ensure it persists
+			await dbHelpers.clearUnread(pubkey);
 		}
 
 		// Load message history
 		await loadMessageHistory(pubkey);
+
+		// Ensure unread is cleared after loading history (defensive)
+		await dbHelpers.clearUnread(pubkey);
 	}
 
 	/** Load message history for a conversation */
@@ -287,17 +351,21 @@ function createMessagesStore() {
 			const events = await ndkService.ndk.fetchEvents(filter);
 
 			for (const event of events) {
-				await handleIncomingDM(event, false);
+				// Track seen events to prevent duplicate processing by subscription
+				seenEventIds.add(event.id);
+				// Don't persist or increment unread for historical messages
+				await handleIncomingDM(event, false, false);
 			}
 
 			// Update conversation persistence after batch load
+			// Always set unread_count to 0 since we're viewing the conversation
 			const conv = conversations.find(c => c.pubkey === pubkey);
 			if (conv) {
-				dbHelpers.saveConversation({
+				await dbHelpers.saveConversation({
 					pubkey: conv.pubkey,
 					last_message_at: conv.last_message_at,
 					last_message_preview: conv.last_message_preview,
-					unread_count: conv.unread_count
+					unread_count: 0 // Force 0 since conversation is open
 				});
 			}
 		} catch (e) {
@@ -406,6 +474,9 @@ function createMessagesStore() {
 			dmSubscriptionId = null;
 		}
 		activeConversation = null;
+		// Don't clear seenEventIds - we want to persist knowledge of seen events
+		// Reset initial load state so next subscription can properly track new vs old
+		initialLoadComplete = false;
 	}
 
 	return {
@@ -424,6 +495,9 @@ function createMessagesStore() {
 		},
 		get error() {
 			return error;
+		},
+		get totalUnreadCount() {
+			return conversations.reduce((sum, c) => sum + c.unread_count, 0);
 		},
 
 		// Actions

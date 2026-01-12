@@ -6,6 +6,7 @@
 	import { authStore } from '$stores/auth.svelte';
 	import { walletStore } from '$stores/wallet.svelte';
 	import { uiStore } from '$stores/ui.svelte';
+	import { messagesStore } from '$stores/messages.svelte';
 	import ndkService, { eventPublisher } from '$services/ndk';
 	import { dbHelpers } from '$db';
 	import { browser } from '$app/environment';
@@ -77,9 +78,11 @@
 			// Initialize auth state
 			await authStore.init();
 
-			// Initialize wallet if previously connected
+			// Initialize wallet and load messages if previously connected
 			if (authStore.isAuthenticated) {
 				await walletStore.init();
+				// Load conversations to track unread count
+				messagesStore.loadConversations();
 			}
 
 			// Check if first-time user
@@ -223,9 +226,14 @@
 									'text-primary'
 								:	''}"
 							/>
-							<span>{item.label}</span>
-							{#if item.href === '/messages'}
-								<!-- Unread indicator would go here -->
+							<span class="flex-1">{item.label}</span>
+							{#if item.href === '/messages' && messagesStore.totalUnreadCount > 0}
+								<Badge
+									variant="default"
+									class="text-xs h-5 min-w-5 px-1.5"
+								>
+									{messagesStore.totalUnreadCount}
+								</Badge>
 							{/if}
 						</a>
 					{/each}
@@ -339,13 +347,24 @@
 								class="absolute inset-0 bg-primary/10 rounded-xl"
 							></span>
 						{/if}
-						<item.icon
-							class="relative h-5 w-5 transition-transform group-hover/mobile:scale-110 {(
-								isActive(item.href)
-							) ?
-								'drop-shadow-[0_0_8px_var(--primary)]'
-							:	''}"
-						/>
+						<div class="relative">
+							<item.icon
+								class="h-5 w-5 transition-transform group-hover/mobile:scale-110 {(
+									isActive(item.href)
+								) ?
+									'drop-shadow-[0_0_8px_var(--primary)]'
+								:	''}"
+							/>
+							{#if item.href === '/messages' && messagesStore.totalUnreadCount > 0}
+								<span
+									class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1"
+								>
+									{messagesStore.totalUnreadCount > 9 ?
+										'9+'
+									:	messagesStore.totalUnreadCount}
+								</span>
+							{/if}
+						</div>
 						<span class="relative text-[10px] font-medium"
 							>{item.label}</span
 						>

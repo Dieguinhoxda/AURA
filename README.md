@@ -66,7 +66,7 @@ In a world where social platforms control what you see, who you can reach, and w
 - Nostr Wallet Connect (NWC) integration
 - Send and receive Bitcoin payments
 - Transaction history
-- Zap support (coming soon)
+- ⚡ Zap support for posts and users
 
 ### 🔍 Search
 - Search notes by content

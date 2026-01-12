@@ -28,11 +28,16 @@
 	const activeConv = $derived(messagesStore.getActiveConversation());
 
 	onMount(() => {
-		messagesStore.loadConversations();
+		// Only load if not already loaded (layout may have already loaded)
+		if (messagesStore.conversations.length === 0) {
+			messagesStore.loadConversations();
+		}
 	});
 
 	onDestroy(() => {
-		messagesStore.cleanup();
+		// Don't cleanup subscription - it should persist for badge updates
+		// Just close active conversation
+		messagesStore.closeConversation();
 	});
 
 	// Auto-scroll to bottom when new messages arrive
@@ -199,7 +204,7 @@
 								{conversation.last_message_preview ||
 									'Start chatting'}
 							</p>
-							{#if conversation.last_message_at}
+							{#if conversation.last_message_at && conversation.last_message_preview}
 								<p class="text-xs text-muted-foreground">
 									{formatRelativeTime(
 										conversation.last_message_at,
@@ -232,25 +237,32 @@
 				>
 					<ArrowLeft class="h-5 w-5" />
 				</Button>
-				<Avatar>
-					<AvatarImage src={activeConv.profile?.picture} />
-					<AvatarFallback>
-						{(activeConv.profile?.display_name ||
-							activeConv.profile?.name ||
-							activeConv.pubkey)?.[0]?.toUpperCase() || '?'}
-					</AvatarFallback>
-				</Avatar>
-				<div>
-					<p class="font-medium">
-						{activeConv.profile?.display_name ||
-							activeConv.profile?.name ||
-							truncatePubkey(activeConv.pubkey)}
-					</p>
-					<div class="flex items-center gap-1 text-xs text-success">
-						<Lock class="h-3 w-3" />
-						End-to-end encrypted
+				<a
+					href="/profile/{activeConv.pubkey}"
+					class="flex items-center gap-3 hover:opacity-80 transition-opacity"
+				>
+					<Avatar>
+						<AvatarImage src={activeConv.profile?.picture} />
+						<AvatarFallback>
+							{(activeConv.profile?.display_name ||
+								activeConv.profile?.name ||
+								activeConv.pubkey)?.[0]?.toUpperCase() || '?'}
+						</AvatarFallback>
+					</Avatar>
+					<div>
+						<p class="font-medium">
+							{activeConv.profile?.display_name ||
+								activeConv.profile?.name ||
+								truncatePubkey(activeConv.pubkey)}
+						</p>
+						<div
+							class="flex items-center gap-1 text-xs text-success"
+						>
+							<Lock class="h-3 w-3" />
+							End-to-end encrypted
+						</div>
 					</div>
-				</div>
+				</a>
 			</div>
 
 			<!-- Messages -->
@@ -279,7 +291,9 @@
 									<span>Failed to decrypt</span>
 								</div>
 							{:else}
-								<p class="whitespace-pre-wrap break-words break-all">
+								<p
+									class="whitespace-pre-wrap wrap-break-words break-all"
+								>
 									{message.content}
 								</p>
 							{/if}
