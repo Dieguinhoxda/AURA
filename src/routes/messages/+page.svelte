@@ -279,7 +279,7 @@
 									<span>Failed to decrypt</span>
 								</div>
 							{:else}
-								<p class="whitespace-pre-wrap wrap-break-word">
+								<p class="whitespace-pre-wrap break-words break-all">
 									{message.content}
 								</p>
 							{/if}

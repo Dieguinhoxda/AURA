@@ -116,7 +116,7 @@
 </script>
 
 {#if safeUrl && !hasError}
-	<div class="media-embed rounded-lg overflow-hidden bg-muted {className}">
+	<div class="media-embed w-full max-w-full rounded-lg overflow-hidden bg-muted {className}">
 		{#if mediaType === 'image'}
 			<!-- Image embed -->
 			<a
@@ -238,9 +238,3 @@
 		</a>
 	</div>
 {/if}
-
-<style>
-	.media-embed {
-		max-width: 100%;
-	}
-</style>

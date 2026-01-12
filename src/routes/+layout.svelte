@@ -314,7 +314,7 @@
 		</aside>
 
 		<!-- Main content -->
-		<main class="flex-1">
+		<main class="flex-1 min-w-0 w-full">
 			{@render children()}
 		</main>
 

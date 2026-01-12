@@ -233,7 +233,7 @@
 
 			<!-- Content - Safely sanitized HTML -->
 			<div
-				class="mb-3 whitespace-pre-wrap wrap-break-word text-foreground note-content"
+				class="mb-3 break-words text-foreground note-content"
 			>
 				{@html safeHtml}
 			</div>
