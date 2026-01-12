@@ -431,6 +431,28 @@ function createFeedStore() {
 		}
 	}
 
+	/** Delete a note with optimistic update */
+	async function deleteNote(eventId: string): Promise<void> {
+		const eventIndex = events.findIndex(e => e.event.id === eventId);
+		if (eventIndex === -1) return;
+
+		const previousEvents = [...events];
+
+		// Optimistic update: remove from feed
+		events = events.filter(e => e.event.id !== eventId);
+
+		try {
+			await ndkService.deleteEvent(eventId);
+			// Also remove from seenIds and reactionCache
+			seenIds.delete(eventId);
+			reactionCache.delete(eventId);
+		} catch (e) {
+			// Rollback
+			events = previousEvents;
+			throw e;
+		}
+	}
+
 	/** Refresh feed */
 	async function refresh(): Promise<void> {
 		await load(feedType, feedParam);
@@ -463,6 +485,7 @@ function createFeedStore() {
 		publishNote,
 		react,
 		repost,
+		deleteNote,
 		refresh,
 		clearError,
 		cleanup

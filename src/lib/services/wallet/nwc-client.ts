@@ -120,7 +120,7 @@ export class NWCClient {
 	private _isConnected = false;
 	private _reconnectAttempts = 0;
 	private _maxReconnectAttempts = 5;
-	private _reconnectDelay = 1000;
+	private _reconnectDelay = 2000;
 	private _eventListeners: Set<(event: NWCEvent) => void> = new Set();
 
 	/** Check if connected */
@@ -219,8 +219,14 @@ export class NWCClient {
 				};
 
 				this._ws.onerror = (error) => {
-					this.emit({ type: 'error', error: 'WebSocket error' });
+					// Suppress error logs during reconnection to avoid console spam
+					if (this._isConnected) {
+						this.emit({ type: 'error', error: 'WebSocket error' });
+					}
+					
 					if (!this._isConnected) {
+						// Quietly fail during initial connect, will retry
+						console.debug('[NWC] Connection failed, will retry');
 						reject(new WalletError('Failed to connect to wallet relay', {
 							code: ErrorCode.NWC_CONNECTION_FAILED
 						}));
@@ -414,18 +420,24 @@ export class NWCClient {
 
 	private attemptReconnect(): void {
 		if (this._reconnectAttempts >= this._maxReconnectAttempts) {
+			console.warn('[NWC] Max reconnection attempts reached');
 			this.emit({ type: 'error', error: 'Max reconnection attempts reached' });
 			return;
 		}
 
 		this._reconnectAttempts++;
+		// Exponential backoff with higher base to reduce spam
 		const delay = this._reconnectDelay * Math.pow(2, this._reconnectAttempts - 1);
+		
+		console.debug(`[NWC] Reconnecting in ${delay}ms (attempt ${this._reconnectAttempts})`);
 
 		setTimeout(() => {
 			if (this._connectionInfo) {
 				// Reconstruct connection string for reconnect
 				const connStr = `nostr+walletconnect://${this._connectionInfo.walletPubkey}?relay=${encodeURIComponent(this._connectionInfo.relayUrl)}&secret=${this._connectionInfo.secret}`;
-				this.connect(connStr).catch(console.error);
+				this.connect(connStr).catch(() => {
+					// Ignore errors here, they are handled in connect() and we'll retry again
+				});
 			}
 		}, delay);
 	}

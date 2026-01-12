@@ -210,7 +210,7 @@ function createMessagesStore() {
 						...conv,
 						messages: [...conv.messages, message].sort((a, b) => a.created_at - b.created_at),
 						last_message_at: message.created_at,
-						last_message_preview: content.slice(0, 50),
+						last_message_preview: (content || '').slice(0, 50),
 						unread_count: activeConversation === otherPubkey ? 0 : conv.unread_count + 1
 					},
 					...conversations.slice(0, existingIndex),
@@ -225,7 +225,7 @@ function createMessagesStore() {
 				profile,
 				messages: [message],
 				last_message_at: message.created_at,
-				last_message_preview: content.slice(0, 50),
+				last_message_preview: (content || '').slice(0, 50),
 				unread_count: activeConversation === otherPubkey ? 0 : 1
 			};
 
@@ -235,7 +235,7 @@ function createMessagesStore() {
 			dbHelpers.saveConversation({
 				pubkey: otherPubkey,
 				last_message_at: message.created_at,
-				last_message_preview: content.slice(0, 50),
+				last_message_preview: (content || '').slice(0, 50),
 				unread_count: newConv.unread_count
 			});
 		}
@@ -320,7 +320,7 @@ function createMessagesStore() {
 								...c,
 								messages: [...c.messages, message],
 								last_message_at: message.created_at,
-								last_message_preview: content.slice(0, 50)
+								last_message_preview: (content || '').slice(0, 50)
 							}
 						: c
 				);

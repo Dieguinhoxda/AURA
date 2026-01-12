@@ -306,14 +306,27 @@ class NDKService {
 
 		if (event) {
 			try {
-				const profile = JSON.parse(event.content);
+				// Sanitize content before parsing (remove control characters that break JSON)
+				// Replace unescaped newlines/tabs with escaped versions or remove them
+				const cleanContent = event.content.replace(/[\x00-\x1F\x7F-\x9F]/g, (char) => {
+					switch (char) {
+						case '\n': return '\\n';
+						case '\r': return '\\r';
+						case '\t': return '\\t';
+						case '\b': return '\\b';
+						case '\f': return '\\f';
+						default: return ''; // Remove other control chars
+					}
+				});
+				
+				const profile = JSON.parse(cleanContent);
 				await dbHelpers.saveProfile({
 					pubkey,
 					...profile,
 					updated_at: Date.now()
 				});
 			} catch (e) {
-				console.error('Failed to parse profile:', e);
+				console.warn('Failed to parse profile for', pubkey, e);
 			}
 		}
 
@@ -345,6 +358,17 @@ class NDKService {
 			['p', targetEvent.pubkey],
 			['client', 'AURA']
 		];
+
+		await this.publish(event);
+		return event;
+	}
+
+	/** Delete an event (kind 5) */
+	async deleteEvent(eventId: string, reason?: string): Promise<NDKEvent> {
+		const event = new NDKEvent(this.ndk);
+		event.kind = 5;
+		event.content = reason || '';
+		event.tags = [['e', eventId]];
 
 		await this.publish(event);
 		return event;

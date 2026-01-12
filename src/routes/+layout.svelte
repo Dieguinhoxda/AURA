@@ -58,15 +58,14 @@
 	onMount(async () => {
 		try {
 			// Initialize NDK with timeout
-			await ndkService.init();
+			if (ndkService.connectionStatus === 'disconnected') {
+				await ndkService.init();
+			}
 
 			// Connect with timeout (don't block UI if relays are slow)
 			const connectPromise = ndkService.connect();
 			const timeoutPromise = new Promise((_, reject) =>
-				setTimeout(
-					() => reject(new Error('Connection timeout')),
-					10000,
-				),
+				setTimeout(() => reject(new Error('Connection timeout')), 3000),
 			);
 
 			try {

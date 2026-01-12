@@ -179,7 +179,7 @@ export function parseNoteContent(content: string): {
  * @param url - URL to validate
  * @returns Sanitized URL or empty string if invalid
  */
-export function sanitizeUrl(url: string): string {
+export function sanitizeUrl(url: string | undefined | null): string {
 	if (!url || typeof url !== 'string') {
 		return '';
 	}
@@ -190,6 +190,11 @@ export function sanitizeUrl(url: string): string {
 		// Only allow http, https, and wss protocols
 		if (!['http:', 'https:', 'wss:'].includes(parsed.protocol)) {
 			return '';
+		}
+
+		// Force HTTPS for http URLs to avoid mixed content/CSP issues
+		if (parsed.protocol === 'http:') {
+			parsed.protocol = 'https:';
 		}
 
 		return parsed.href;

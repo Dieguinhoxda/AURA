@@ -13,6 +13,7 @@
 	import { Skeleton } from '$components/ui/skeleton';
 	import { EmptyState } from '$components/ui/empty-state';
 	import { formatRelativeTime, truncatePubkey } from '$lib/utils';
+	import { sanitizeUrl } from '$lib/validators/sanitize';
 	import Bell from 'lucide-svelte/icons/bell';
 	import Heart from 'lucide-svelte/icons/heart';
 	import MessageCircle from 'lucide-svelte/icons/message-circle';
@@ -115,13 +116,6 @@
 
 	function handleNotificationClick(notification: SocialNotification) {
 		socialNotificationsStore.markAsRead(notification.id);
-
-		// Navigate based on type
-		if (notification.targetEventId) {
-			// Would navigate to note - for now just mark as read
-		} else if (notification.type === 'follow') {
-			window.location.href = `/profile/${notification.actorPubkey}`;
-		}
 	}
 </script>
 
@@ -213,19 +207,24 @@
 			<div class="divide-y divide-border">
 				{#each filteredNotifications as notification (notification.id)}
 					{@const Icon = getNotificationIcon(notification.type)}
-					<button
+					<div
 						class="flex w-full items-start gap-3 p-4 text-left transition-colors hover:bg-muted/50 {(
 							notification.read
 						) ?
 							'opacity-60'
 						:	''}"
-						onclick={() => handleNotificationClick(notification)}
 					>
 						<!-- Actor avatar -->
-						<div class="relative">
+						<a
+							href="/profile/{notification.actorPubkey}"
+							class="relative block transition-transform hover:scale-105"
+							onclick={(e) => e.stopPropagation()}
+						>
 							<Avatar size="md">
 								<AvatarImage
-									src={notification.actorProfile?.picture}
+									src={sanitizeUrl(
+										notification.actorProfile?.picture,
+									)}
 								/>
 								<AvatarFallback>
 									{(
@@ -248,12 +247,18 @@
 									)}"
 								/>
 							</div>
-						</div>
+						</a>
 
 						<!-- Content -->
 						<div class="min-w-0 flex-1">
 							<p class="font-medium">
-								{getNotificationText(notification)}
+								<a
+									href="/profile/{notification.actorPubkey}"
+									class="hover:underline focus:outline-none text-foreground"
+									onclick={(e) => e.stopPropagation()}
+								>
+									{getNotificationText(notification)}
+								</a>
 							</p>
 							{#if notification.content}
 								<p
@@ -273,7 +278,7 @@
 								class="h-2 w-2 rounded-full bg-primary shrink-0 mt-2"
 							></div>
 						{/if}
-					</button>
+					</div>
 				{/each}
 			</div>
 		{/if}

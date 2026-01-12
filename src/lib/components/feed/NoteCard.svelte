@@ -13,6 +13,7 @@
 	import { parseNoteContent, sanitizeUrl } from '$lib/validators/sanitize';
 	import { feedStore } from '$stores/feed.svelte';
 	import { notificationsStore } from '$stores/notifications.svelte';
+	import { ndkService } from '$lib/services/ndk';
 	import Heart from 'lucide-svelte/icons/heart';
 	import MessageCircle from 'lucide-svelte/icons/message-circle';
 	import Repeat2 from 'lucide-svelte/icons/repeat-2';
@@ -20,6 +21,7 @@
 	import Share from 'lucide-svelte/icons/share';
 	import X from 'lucide-svelte/icons/x';
 	import Send from 'lucide-svelte/icons/send';
+	import Trash2 from 'lucide-svelte/icons/trash-2';
 
 	interface Props {
 		event: NDKEvent;
@@ -47,6 +49,7 @@
 
 	let isReacting = $state(false);
 	let isReposting = $state(false);
+	let isDeleting = $state(false);
 	let showZapModal = $state(false);
 	let showRepostMenu = $state(false);
 	let showQuoteModal = $state(false);
@@ -94,6 +97,8 @@
 		(author?.display_name || author?.name || 'A').slice(0, 2).toUpperCase(),
 	);
 
+	const isAuthor = $derived(ndkService.pubkey === event.pubkey);
+
 	async function handleReact() {
 		if (isReacting || hasReacted) return;
 		isReacting = true;
@@ -133,6 +138,28 @@
 			showQuoteModal = false;
 		} finally {
 			isReposting = false;
+		}
+	}
+
+	async function handleDelete() {
+		if (isDeleting) return;
+		if (!confirm('Are you sure you want to delete this note?')) return;
+
+		isDeleting = true;
+		try {
+			await feedStore.deleteNote(event.id);
+			notificationsStore.success(
+				'Note deleted',
+				'The note has been removed from Nostr',
+			);
+		} catch (e) {
+			console.error('Failed to delete note:', e);
+			notificationsStore.error(
+				'Failed to delete note',
+				'Please try again later',
+			);
+		} finally {
+			isDeleting = false;
 		}
 	}
 
@@ -232,9 +259,7 @@
 			</div>
 
 			<!-- Content - Safely sanitized HTML -->
-			<div
-				class="mb-3 break-words text-foreground note-content"
-			>
+			<div class="mb-3 wrap-break-words text-foreground note-content">
 				{@html safeHtml}
 			</div>
 
@@ -260,7 +285,7 @@
 
 			<!-- Actions -->
 			<div
-				class="flex items-center justify-between text-muted-foreground -mx-1"
+				class="flex items-center justify-start gap-1 text-muted-foreground -ml-1"
 				role="group"
 				aria-label="Note actions"
 			>
@@ -283,8 +308,10 @@
 					<Button
 						variant="ghost"
 						size="sm"
-						class="gap-1.5 h-9 px-2 hover:text-success {hasReposted ?
-							'text-success'
+						class="gap-1.5 h-9 px-2 hover:text-green-500 hover:bg-green-500/10 {(
+							hasReposted
+						) ?
+							'text-green-500'
 						:	''}"
 						onclick={() => (showRepostMenu = !showRepostMenu)}
 						disabled={isReposting}
@@ -336,8 +363,10 @@
 				<Button
 					variant="ghost"
 					size="sm"
-					class="gap-1.5 h-9 px-2 hover:text-destructive {hasReacted ?
-						'text-destructive'
+					class="gap-1.5 h-9 px-2 hover:text-pink-500 hover:bg-pink-500/10 {(
+						hasReacted
+					) ?
+						'text-pink-500'
 					:	''}"
 					onclick={handleReact}
 					disabled={isReacting}
@@ -357,7 +386,9 @@
 				<Button
 					variant="ghost"
 					size="sm"
-					class="gap-1.5 h-9 px-2 hover:text-warning {author?.lud16 ?
+					class="gap-1.5 h-9 px-2 hover:text-yellow-500 hover:bg-yellow-500/10 {(
+						author?.lud16
+					) ?
 						''
 					:	'opacity-50'}"
 					onclick={handleZap}
@@ -378,12 +409,30 @@
 				<Button
 					variant="ghost"
 					size="sm"
-					class="h-9 px-2 hover:text-accent"
+					class="h-9 px-2 hover:text-blue-500 hover:bg-blue-500/10"
 					onclick={handleShare}
 					aria-label="Share note"
 				>
 					<Share class="h-4 w-4" />
 				</Button>
+
+				{#if isAuthor}
+					<Button
+						variant="ghost"
+						size="sm"
+						class="h-9 px-2 hover:text-red-500 hover:bg-red-500/10"
+						onclick={handleDelete}
+						disabled={isDeleting}
+						aria-label="Delete note"
+						title="Delete note"
+					>
+						{#if isDeleting}
+							<Spinner size="sm" />
+						{:else}
+							<Trash2 class="h-4 w-4" />
+						{/if}
+					</Button>
+				{/if}
 			</div>
 		</div>
 	</div>
