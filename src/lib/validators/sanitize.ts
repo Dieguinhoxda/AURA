@@ -77,12 +77,10 @@ export function escapeHtml(text: string): string {
 		'>': '&gt;',
 		'"': '&quot;',
 		"'": '&#39;',
-		'/': '&#x2F;',
-		'`': '&#x60;',
-		'=': '&#x3D;'
+		'`': '&#x60;'
 	};
 
-	return text.replace(/[&<>"'`=/]/g, (char) => htmlEntities[char]);
+	return text.replace(/[&<>"'`]/g, (char) => htmlEntities[char]);
 }
 
 /**
@@ -162,11 +160,28 @@ export function parseNoteContent(content: string): {
 	// Remove multiple consecutive <br> tags
 	escaped = escaped.replace(/(<br\s*\/?>){3,}/gi, '<br><br>');
 
+	// Decode HTML entities in text that shouldn't be encoded for display
+	// This fixes issues where entities like &#x2F; (slash) and &#x3D; (equals) are visible
+	const decodeEntities = (str: string) => {
+		return str
+			.replace(/&#x2F;/g, '/')
+			.replace(/&#x3D;/g, '=')
+			.replace(/&#39;/g, "'")
+			.replace(/&#x27;/g, "'")
+			.replace(/&apos;/g, "'")
+			.replace(/&quot;/g, '"');
+	};
+
 	// Final sanitization pass
 	const html = sanitizeHtml(escaped, 'note');
 
+	// Unescape safe entities for display
+	// We do this AFTER sanitization because we want the browser to render these characters,
+	// but we've already ensured (via escapeHtml + DOMPurify) that no malicious tags exist.
+	// The problem was that escapeHtml was encoding / and = which aren't dangerous in text context,
+	// and then DOMPurify was preserving them as entities.
 	return {
-		html,
+		html: decodeEntities(html),
 		imageUrls,
 		urls,
 		hashtags,

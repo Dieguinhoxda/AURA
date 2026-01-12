@@ -37,6 +37,7 @@ interface OptimisticUpdate {
 function createFeedStore() {
 	// State
 	let events = $state<FeedEvent[]>([]);
+	let queuedEvents = $state<FeedEvent[]>([]);
 	let isLoading = $state(false);
 	let isLoadingMore = $state(false);
 	let hasMore = $state(true);
@@ -47,6 +48,7 @@ function createFeedStore() {
 	// Subscription management
 	let currentSubscriptionId: string | null = null;
 	const subscriptionLabel = 'feed-main';
+	let loadingTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// Caches
 	const profileCache = new Map<string, UserProfile>();
@@ -157,13 +159,29 @@ function createFeedStore() {
 	async function load(type: FeedType = 'global', param?: string): Promise<void> {
 		stopSubscription();
 
+		// Clear previous timeout if any
+		if (loadingTimeout) {
+			clearTimeout(loadingTimeout);
+			loadingTimeout = null;
+		}
+
 		isLoading = true;
 		error = null;
 		feedType = type;
 		feedParam = param;
 		events = [];
+		queuedEvents = [];
 		seenIds.clear();
 		hasMore = true;
+
+		// Force finish loading after 3.5 seconds to prevent stuck spinner
+		// This ensures UX stability even if some relays are slow
+		loadingTimeout = setTimeout(() => {
+			if (isLoading) {
+				isLoading = false;
+				loadingTimeout = null;
+			}
+		}, 3500);
 
 		try {
 			// Load contacts if we need them for following feed
@@ -225,6 +243,12 @@ function createFeedStore() {
 
 						const feedEvent = await toFeedEvent(event);
 
+						// If we are not loading (initial load done), queue the event
+						if (!isLoading) {
+							queuedEvents = [feedEvent, ...queuedEvents];
+							return;
+						}
+
 						// Insert in chronological order
 						const insertIndex = events.findIndex(
 							(e) => (e.event.created_at || 0) < (event.created_at || 0)
@@ -253,6 +277,10 @@ function createFeedStore() {
 					},
 					onEose: () => {
 						isLoading = false;
+						if (loadingTimeout) {
+							clearTimeout(loadingTimeout);
+							loadingTimeout = null;
+						}
 					}
 				},
 				subscriptionLabel
@@ -261,6 +289,10 @@ function createFeedStore() {
 			const auraError = ErrorHandler.handle(e);
 			error = auraError.userMessage;
 			isLoading = false;
+			if (loadingTimeout) {
+				clearTimeout(loadingTimeout);
+				loadingTimeout = null;
+			}
 		}
 	}
 
@@ -458,6 +490,19 @@ function createFeedStore() {
 		await load(feedType, feedParam);
 	}
 
+	/** Show queued events */
+	function showNewEvents() {
+		if (queuedEvents.length === 0) return;
+
+		// Merge and sort
+		const allEvents = [...queuedEvents, ...events];
+		events = allEvents.sort((a, b) => 
+			(b.event.created_at || 0) - (a.event.created_at || 0)
+		);
+		
+		queuedEvents = [];
+	}
+
 	/** Clear error */
 	function clearError(): void {
 		error = null;
@@ -468,11 +513,16 @@ function createFeedStore() {
 		stopSubscription();
 		seenIds.clear();
 		optimisticUpdates.length = 0;
+		if (loadingTimeout) {
+			clearTimeout(loadingTimeout);
+			loadingTimeout = null;
+		}
 	}
 
 	return {
 		// State (readonly)
 		get events() { return events; },
+		get queuedEvents() { return queuedEvents; },
 		get isLoading() { return isLoading; },
 		get isLoadingMore() { return isLoadingMore; },
 		get hasMore() { return hasMore; },
@@ -482,6 +532,7 @@ function createFeedStore() {
 		// Actions
 		load,
 		loadMore,
+		showNewEvents,
 		publishNote,
 		react,
 		repost,

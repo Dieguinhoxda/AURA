@@ -17,6 +17,7 @@
 	import Globe from 'lucide-svelte/icons/globe';
 	import UserPlus from 'lucide-svelte/icons/user-plus';
 	import LogIn from 'lucide-svelte/icons/log-in';
+	import ArrowUp from 'lucide-svelte/icons/arrow-up';
 
 	let feedTab = $state<'global' | 'following'>('global');
 	let virtualList: ReturnType<typeof VirtualList> | undefined = $state();
@@ -140,6 +141,21 @@
 
 	<!-- Feed -->
 	<div class="flex-1 overflow-hidden relative">
+		{#if feedStore.queuedEvents.length > 0}
+			<button
+				class="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all animate-in fade-in slide-in-from-top-4"
+				onclick={() => {
+					feedStore.showNewEvents();
+					virtualList?.scrollToTop();
+				}}
+			>
+				<ArrowUp class="h-4 w-4" />
+				<span class="text-sm font-medium"
+					>Show {feedStore.queuedEvents.length} new posts</span
+				>
+			</button>
+		{/if}
+
 		{#if feedStore.error}
 			<div class="p-8 text-center animate-fade-in">
 				<div

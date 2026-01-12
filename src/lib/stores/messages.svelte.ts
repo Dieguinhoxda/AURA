@@ -163,7 +163,7 @@ function createMessagesStore() {
 	}
 
 	/** Handle incoming DM */
-	async function handleIncomingDM(event: NDKEvent): Promise<void> {
+	async function handleIncomingDM(event: NDKEvent, persist: boolean = true): Promise<void> {
 		if (!authStore.pubkey) return;
 
 		// Determine the other party
@@ -205,17 +205,27 @@ function createMessagesStore() {
 			const messageExists = conv.messages.some((m) => m.id === message.id);
 
 			if (!messageExists) {
+				const newUnreadCount = activeConversation === otherPubkey ? 0 : conv.unread_count + 1;
 				conversations = [
 					{
 						...conv,
 						messages: [...conv.messages, message].sort((a, b) => a.created_at - b.created_at),
 						last_message_at: message.created_at,
 						last_message_preview: (content || '').slice(0, 50),
-						unread_count: activeConversation === otherPubkey ? 0 : conv.unread_count + 1
+						unread_count: newUnreadCount
 					},
 					...conversations.slice(0, existingIndex),
 					...conversations.slice(existingIndex + 1)
 				];
+
+				if (persist) {
+					dbHelpers.saveConversation({
+						pubkey: otherPubkey,
+						last_message_at: message.created_at,
+						last_message_preview: (content || '').slice(0, 50),
+						unread_count: newUnreadCount
+					});
+				}
 			}
 		} else {
 			// Create new conversation
@@ -232,12 +242,14 @@ function createMessagesStore() {
 			conversations = [newConv, ...conversations];
 
 			// Save to DB
-			dbHelpers.saveConversation({
-				pubkey: otherPubkey,
-				last_message_at: message.created_at,
-				last_message_preview: (content || '').slice(0, 50),
-				unread_count: newConv.unread_count
-			});
+			if (persist) {
+				dbHelpers.saveConversation({
+					pubkey: otherPubkey,
+					last_message_at: message.created_at,
+					last_message_preview: (content || '').slice(0, 50),
+					unread_count: newConv.unread_count
+				});
+			}
 		}
 	}
 
@@ -275,7 +287,18 @@ function createMessagesStore() {
 			const events = await ndkService.ndk.fetchEvents(filter);
 
 			for (const event of events) {
-				await handleIncomingDM(event);
+				await handleIncomingDM(event, false);
+			}
+
+			// Update conversation persistence after batch load
+			const conv = conversations.find(c => c.pubkey === pubkey);
+			if (conv) {
+				dbHelpers.saveConversation({
+					pubkey: conv.pubkey,
+					last_message_at: conv.last_message_at,
+					last_message_preview: conv.last_message_preview,
+					unread_count: conv.unread_count
+				});
 			}
 		} catch (e) {
 			console.error('Failed to load message history:', e);
@@ -314,16 +337,24 @@ function createMessagesStore() {
 
 			const convIndex = conversations.findIndex((c) => c.pubkey === recipientPubkey);
 			if (convIndex >= 0) {
+				const updatedConv = {
+					...conversations[convIndex],
+					messages: [...conversations[convIndex].messages, message],
+					last_message_at: message.created_at,
+					last_message_preview: (content || '').slice(0, 50)
+				};
+
 				conversations = conversations.map((c) =>
-					c.pubkey === recipientPubkey
-						? {
-								...c,
-								messages: [...c.messages, message],
-								last_message_at: message.created_at,
-								last_message_preview: (content || '').slice(0, 50)
-							}
-						: c
+					c.pubkey === recipientPubkey ? updatedConv : c
 				);
+
+				// Persist updated conversation metadata
+				dbHelpers.saveConversation({
+					pubkey: recipientPubkey,
+					last_message_at: message.created_at,
+					last_message_preview: (content || '').slice(0, 50),
+					unread_count: updatedConv.unread_count
+				});
 			}
 		} catch (e) {
 			console.error('Failed to send message:', e);
