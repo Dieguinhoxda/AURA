@@ -46,8 +46,13 @@ function patchPackageAtPath(pkgPath, additionalExports) {
 	}
 }
 
-function findAllPackagePaths(nodeModulesPath, pkgName) {
+function findAllPackagePaths(nodeModulesPath, pkgName, visited = new Set()) {
 	const paths = [];
+	
+	// Prevent infinite loops
+	const realPath = nodeModulesPath;
+	if (visited.has(realPath)) return paths;
+	visited.add(realPath);
 	
 	// Direct path
 	const directPath = join(nodeModulesPath, pkgName, 'package.json');
@@ -59,22 +64,34 @@ function findAllPackagePaths(nodeModulesPath, pkgName) {
 	try {
 		const entries = readdirSync(nodeModulesPath);
 		for (const entry of entries) {
+			if (entry.startsWith('.')) continue;
+			
 			const entryPath = join(nodeModulesPath, entry);
-			if (entry.startsWith('.') || !statSync(entryPath).isDirectory()) continue;
+			try {
+				if (!statSync(entryPath).isDirectory()) continue;
+			} catch {
+				continue;
+			}
 			
 			// Handle scoped packages
 			if (entry.startsWith('@')) {
-				const scopedEntries = readdirSync(entryPath);
-				for (const scopedEntry of scopedEntries) {
-					const nestedNodeModules = join(entryPath, scopedEntry, 'node_modules');
-					if (existsSync(nestedNodeModules)) {
-						paths.push(...findAllPackagePaths(nestedNodeModules, pkgName));
+				try {
+					const scopedEntries = readdirSync(entryPath);
+					for (const scopedEntry of scopedEntries) {
+						const scopedPkgPath = join(entryPath, scopedEntry);
+						// Check for nested node_modules
+						const nestedNodeModules = join(scopedPkgPath, 'node_modules');
+						if (existsSync(nestedNodeModules)) {
+							paths.push(...findAllPackagePaths(nestedNodeModules, pkgName, visited));
+						}
 					}
+				} catch {
+					continue;
 				}
 			} else {
 				const nestedNodeModules = join(entryPath, 'node_modules');
 				if (existsSync(nestedNodeModules)) {
-					paths.push(...findAllPackagePaths(nestedNodeModules, pkgName));
+					paths.push(...findAllPackagePaths(nestedNodeModules, pkgName, visited));
 				}
 			}
 		}
@@ -87,6 +104,21 @@ function findAllPackagePaths(nodeModulesPath, pkgName) {
 
 function patchPackage(pkgName, additionalExports) {
 	const allPaths = findAllPackagePaths(nodeModules, pkgName);
+	
+	// Also check known problematic nested locations explicitly
+	const knownNestedPaths = [
+		join(nodeModules, 'nostr-tools', 'node_modules', pkgName, 'package.json'),
+		join(nodeModules, '@nostr-dev-kit', 'ndk', 'node_modules', pkgName, 'package.json'),
+		join(nodeModules, '@cashu', 'cashu-ts', 'node_modules', pkgName, 'package.json'),
+		join(nodeModules, '@scure', 'bip32', 'node_modules', pkgName, 'package.json'),
+		join(nodeModules, '@scure', 'bip39', 'node_modules', pkgName, 'package.json'),
+	];
+	
+	for (const knownPath of knownNestedPaths) {
+		if (existsSync(knownPath) && !allPaths.includes(knownPath)) {
+			allPaths.push(knownPath);
+		}
+	}
 	
 	if (allPaths.length === 0) {
 		console.log(`⚠️  ${pkgName} not found, skipping`);
