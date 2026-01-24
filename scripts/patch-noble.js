@@ -107,11 +107,16 @@ function patchPackage(pkgName, additionalExports) {
 	
 	// Also check known problematic nested locations explicitly
 	const knownNestedPaths = [
+		// Direct nested in main packages
 		join(nodeModules, 'nostr-tools', 'node_modules', pkgName, 'package.json'),
 		join(nodeModules, '@nostr-dev-kit', 'ndk', 'node_modules', pkgName, 'package.json'),
 		join(nodeModules, '@cashu', 'cashu-ts', 'node_modules', pkgName, 'package.json'),
 		join(nodeModules, '@scure', 'bip32', 'node_modules', pkgName, 'package.json'),
 		join(nodeModules, '@scure', 'bip39', 'node_modules', pkgName, 'package.json'),
+		// Deeply nested paths
+		join(nodeModules, 'nostr-tools', 'node_modules', '@scure', 'bip32', 'node_modules', pkgName, 'package.json'),
+		join(nodeModules, 'nostr-tools', 'node_modules', '@scure', 'bip39', 'node_modules', pkgName, 'package.json'),
+		join(nodeModules, 'nostr-tools', 'node_modules', '@noble', 'curves', 'node_modules', pkgName, 'package.json'),
 	];
 	
 	for (const knownPath of knownNestedPaths) {
@@ -181,5 +186,33 @@ patchPackage('@noble/ciphers', {
 	'./aes': './aes.js',
 	'./webcrypto': './webcrypto.js'
 });
+
+// Clean Vite cache to ensure fresh resolution
+const viteCachePath = join(nodeModules, '.vite');
+if (existsSync(viteCachePath)) {
+	try {
+		const { rmSync } = await import('fs');
+		rmSync(viteCachePath, { recursive: true, force: true });
+		console.log('🗑️  Cleared Vite cache');
+	} catch (err) {
+		console.log('⚠️  Could not clear Vite cache:', err.message);
+	}
+}
+
+// Verify critical exports
+const criticalPkgPath = join(nodeModules, '@noble', 'hashes', 'package.json');
+if (existsSync(criticalPkgPath)) {
+	try {
+		const pkg = JSON.parse(readFileSync(criticalPkgPath, 'utf8'));
+		const hasShaCritical = pkg.exports && pkg.exports['./sha256'];
+		if (hasShaCritical) {
+			console.log('✓  Verified @noble/hashes has ./sha256 export');
+		} else {
+			console.log('⚠️  WARNING: @noble/hashes missing ./sha256 export!');
+		}
+	} catch (err) {
+		console.log('⚠️  Could not verify @noble/hashes:', err.message);
+	}
+}
 
 console.log('\n🔧 Noble packages patched for Vite compatibility');
