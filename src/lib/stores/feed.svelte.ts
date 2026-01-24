@@ -286,7 +286,8 @@ function createFeedStore() {
 				subscriptionLabel
 			);
 		} catch (e) {
-			const auraError = ErrorHandler.handle(e);
+			// Use normalize() to avoid toast - errors are shown in UI
+			const auraError = ErrorHandler.normalize(e);
 			error = auraError.userMessage;
 			isLoading = false;
 			if (loadingTimeout) {
@@ -346,7 +347,8 @@ function createFeedStore() {
 				}
 			}
 		} catch (e) {
-			const auraError = ErrorHandler.handle(e);
+			// Use normalize() to avoid toast - errors are shown in UI
+			const auraError = ErrorHandler.normalize(e);
 			error = auraError.userMessage;
 		} finally {
 			isLoadingMore = false;

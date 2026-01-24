@@ -65,7 +65,8 @@ export function generateNostrMnemonic(): GeneratedKeys {
 /**
  * Validate a mnemonic phrase
  */
-export function isValidMnemonic(mnemonic: string): boolean {
+export function isValidMnemonic(mnemonic: string | null | undefined): boolean {
+	if (!mnemonic) return false;
 	return validateMnemonic(mnemonic, wordlist);
 }
 

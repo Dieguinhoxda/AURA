@@ -52,6 +52,9 @@ const AMOUNT_MULTIPLIERS: Record<string, number> = {
  * Parse a BOLT11 invoice
  */
 export function parseInvoice(invoice: string): ParsedInvoice {
+	if (!invoice) {
+		throw new Error('Invalid invoice: empty input');
+	}
 	// Normalize invoice
 	const normalizedInvoice = invoice.toLowerCase().trim();
 	
@@ -165,6 +168,7 @@ export function isValidInvoice(invoice: string): boolean {
  * Get network from invoice
  */
 export function getInvoiceNetwork(invoice: string): string | null {
+	if (!invoice) return null;
 	const normalized = invoice.toLowerCase().trim();
 	const prefixMatch = normalized.match(/^(lnbc|lntb|lnbcrt|lnsb)/);
 	

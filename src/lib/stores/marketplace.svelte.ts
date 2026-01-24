@@ -8,7 +8,7 @@
 import type { NDKEvent, NDKFilter } from '@nostr-dev-kit/ndk';
 import ndkService from '$services/ndk';
 import { dbHelpers, type UserProfile } from '$db';
-import { ErrorHandler, NetworkError, ErrorCode } from '$lib/core/errors';
+// Error handling is done via state - toasts would be redundant
 
 /** NIP-15 Classified Listing kind */
 export const LISTING_KIND = 30018;
@@ -66,6 +66,25 @@ export interface ListingFilters {
 	query?: string;
 }
 
+/** NIP-15 product JSON structure in content field */
+interface NIP15ProductContent {
+	id?: string;
+	stall_id?: string;
+	name?: string;
+	description?: string;
+	images?: string[];
+	price?: number;
+	quantity?: number;
+	currency?: string;
+	shipping?: Array<{
+		id?: string;
+		name?: string;
+		cost?: number;
+		regions?: string[];
+	}>;
+	specs?: Array<[string, string]>;
+}
+
 /** Parse NIP-15 event into ProductListing */
 function parseListingEvent(event: NDKEvent, seller: UserProfile | null): ProductListing {
 	const tags = event.tags;
@@ -81,41 +100,80 @@ function parseListingEvent(event: NDKEvent, seller: UserProfile | null): Product
 		return tags.filter(t => t[0] === name).map(t => t[1]);
 	};
 
-	// Parse price - support both "price" tag and amount in sats
-	let price = 0;
-	const priceTag = tags.find(t => t[0] === 'price');
-	if (priceTag) {
-		price = parseFloat(priceTag[1]) || 0;
-		// If currency is specified and not sats, we'll keep track
+	// NIP-15: Product data is stored as JSON in the content field
+	let contentData: NIP15ProductContent = {};
+	if (event.content) {
+		try {
+			contentData = JSON.parse(event.content);
+		} catch {
+			// Content is not JSON, use as-is for description
+			contentData = { description: event.content };
+		}
 	}
 
-	// Parse images
-	const images = getAllTags('image');
-	// Also check for 'thumb' tags
-	const thumbs = getAllTags('thumb');
-	const allImages = [...images, ...thumbs].filter((v, i, a) => a.indexOf(v) === i);
+	// Parse price - check JSON content first, then tags
+	let price = 0;
+	let currency = 'sat';
+	
+	if (contentData.price !== undefined) {
+		price = contentData.price;
+		currency = contentData.currency?.toLowerCase() || 'sats';
+	} else {
+		const priceTag = tags.find(t => t[0] === 'price');
+		if (priceTag) {
+			price = parseFloat(priceTag[1]) || 0;
+			currency = priceTag[2] || getTag('currency') || 'sat';
+		}
+	}
 
-	// Parse shipping options
-	const shippingTags = tags.filter(t => t[0] === 'shipping');
-	const shipping: ShippingOption[] = shippingTags.map((t, i) => ({
-		id: `ship-${i}`,
-		name: t[1] || 'Standard',
-		cost: parseFloat(t[2]) || 0,
-		regions: t[3] ? t[3].split(',') : undefined
-	}));
+	// Parse images - check JSON content first, then tags
+	let allImages: string[] = [];
+	if (contentData.images && contentData.images.length > 0) {
+		allImages = contentData.images;
+	} else {
+		const images = getAllTags('image');
+		const thumbs = getAllTags('thumb');
+		allImages = [...images, ...thumbs].filter((v, i, a) => a.indexOf(v) === i);
+	}
 
-	// Determine category
+	// Parse shipping options - check JSON content first, then tags
+	let shipping: ShippingOption[] = [];
+	if (contentData.shipping && contentData.shipping.length > 0) {
+		shipping = contentData.shipping.map((s, i) => ({
+			id: s.id || `ship-${i}`,
+			name: s.name || 'Standard',
+			cost: s.cost || 0,
+			regions: s.regions
+		}));
+	} else {
+		const shippingTags = tags.filter(t => t[0] === 'shipping');
+		shipping = shippingTags.map((t, i) => ({
+			id: `ship-${i}`,
+			name: t[1] || 'Standard',
+			cost: parseFloat(t[2]) || 0,
+			regions: t[3] ? t[3].split(',') : undefined
+		}));
+	}
+
+	// Determine category from tags
 	const categoryTag = getTag('t') || getTag('category') || 'other';
 	const category = normalizeCategory(categoryTag);
+
+	// Get title - JSON content.name first, then tags
+	const title = contentData.name || getTag('title') || getTag('name') || 'Untitled';
+	
+	// Get description/summary - JSON content.description first, then tags
+	const description = contentData.description || '';
+	const summary = getTag('summary') || description.slice(0, 200);
 
 	return {
 		id: event.id,
 		pubkey: event.pubkey,
-		title: getTag('title') || getTag('name') || 'Untitled',
-		summary: getTag('summary') || '',
-		content: event.content || '',
+		title,
+		summary,
+		content: description,
 		price,
-		currency: getTag('currency') || 'sat',
+		currency,
 		images: allImages,
 		category,
 		condition: getTag('condition') as ProductCondition | undefined,
@@ -254,9 +312,8 @@ function createMarketplaceStore() {
 		} catch (e) {
 			console.error('Failed to load listings:', e);
 			error = e instanceof Error ? e.message : 'Failed to load listings';
-			ErrorHandler.handle(new NetworkError('Failed to load marketplace', { 
-				code: ErrorCode.NETWORK_ERROR 
-			}));
+			// Don't call ErrorHandler.handle() - errors are shown in UI
+			// Toast notifications would be redundant
 		} finally {
 			isLoading = false;
 		}

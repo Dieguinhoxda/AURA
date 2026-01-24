@@ -139,7 +139,8 @@ function createSocialNotificationsStore() {
 	}
 
 	/** Parse zap amount from BOLT11 invoice */
-	function parseZapAmount(bolt11: string): number | undefined {
+	function parseZapAmount(bolt11: string | undefined | null): number | undefined {
+		if (!bolt11) return undefined;
 		// Simple parsing - look for amount in the invoice
 		const match = bolt11.match(/lnbc(\d+)([munp]?)/i);
 		if (!match) return undefined;

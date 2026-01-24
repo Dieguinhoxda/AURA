@@ -37,14 +37,14 @@
 	/**
 	 * Check if a message content contains a Cashu token
 	 */
-	function containsCashuToken(content: string): boolean {
+	function containsCashuToken(content: string | undefined | null): boolean {
 		return cashuStore.looksLikeCashuToken(content);
 	}
 
 	/**
 	 * Extract Cashu token from message content
 	 */
-	function extractCashuToken(content: string): string | null {
+	function extractCashuToken(content: string | undefined | null): string | null {
 		return cashuStore.extractToken(content);
 	}
 

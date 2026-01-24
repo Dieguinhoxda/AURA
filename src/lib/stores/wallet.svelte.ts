@@ -67,7 +67,9 @@ function createWalletStore() {
 				}
 			});
 		} catch (e) {
-			const auraError = ErrorHandler.handle(e);
+			// Use normalize() instead of handle() to avoid triggering toast notifications
+			// Toast notifications for wallet errors are redundant since the UI shows the error state
+			const auraError = ErrorHandler.normalize(e);
 			error = auraError.userMessage;
 			status = 'error';
 			throw e;

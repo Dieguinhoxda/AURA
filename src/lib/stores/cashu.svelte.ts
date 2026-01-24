@@ -76,7 +76,9 @@ function createCashuStore() {
 
 			status = 'connected';
 		} catch (e) {
-			const auraError = ErrorHandler.handle(e);
+			// Use normalize() instead of handle() to avoid toast during init
+			// Cashu is a non-critical service, errors shown in UI only
+			const auraError = ErrorHandler.normalize(e);
 			error = auraError.userMessage;
 			status = 'error';
 			console.error('Failed to initialize Cashu store:', e);
@@ -328,7 +330,8 @@ function createCashuStore() {
 	/**
 	 * Check if a string looks like a Cashu token
 	 */
-	function looksLikeCashuToken(text: string): boolean {
+	function looksLikeCashuToken(text: string | null | undefined): boolean {
+		if (!text) return false;
 		// Cashu v4 tokens start with "cashuB" (base64url encoded)
 		// or "cashuA" for v3 tokens
 		const trimmed = text.trim();
@@ -338,7 +341,8 @@ function createCashuStore() {
 	/**
 	 * Extract Cashu token from text if present
 	 */
-	function extractToken(text: string): string | null {
+	function extractToken(text: string | null | undefined): string | null {
+		if (!text) return null;
 		// Match cashuA... or cashuB... tokens
 		const match = text.match(/cashu[AB][A-Za-z0-9_-]+/);
 		return match ? match[0] : null;
