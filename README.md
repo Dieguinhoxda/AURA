@@ -33,10 +33,13 @@ In a world where social platforms control what you see, who you can reach, and w
 
 - 🔓 **Truly Decentralized** — No single company controls your data or can ban you
 - 🛡️ **Censorship Resistant** — Your voice cannot be silenced by any authority
-- 🔐 **Privacy First** — End-to-end encrypted direct messages (NIP-44)
+- 🔐 **Privacy First** — End-to-end encrypted direct messages (NIP-17 Gift Wraps)
 - ⚡ **Lightning Integrated** — Send and receive Bitcoin payments via NWC
+- 💰 **eCash Support** — Anonymous payments with Cashu tokens
+- 🛒 **Decentralized Marketplace** — Buy and sell with Bitcoin (NIP-15)
+- 🤖 **AI Chat** — Decentralized AI via Data Vending Machines (NIP-90)
 - 🌍 **Open Source** — Transparent, auditable, and community-driven
-- 📱 **PWA Ready** — Install on any device, works offline
+- 📱 **Mobile Ready** — PWA + Capacitor for native Android/iOS builds
 
 > *"They can't stop the signal."*
 
@@ -51,10 +54,11 @@ In a world where social platforms control what you see, who you can reach, and w
 - Create posts, reply, repost, and react
 
 ### 💬 Private Messaging
-- End-to-end encrypted DMs (NIP-04 & NIP-44)
+- End-to-end encrypted DMs with NIP-17 Gift Wraps (metadata hidden)
+- Legacy NIP-04 support for backwards compatibility
 - Conversation list with unread indicators
-- Real-time message delivery
-- Offline message queue
+- Real-time message delivery with offline queue
+- Send eCash (Cashu tokens) in messages
 
 ### 👤 Profiles
 - View and edit your Nostr profile
@@ -62,11 +66,26 @@ In a world where social platforms control what you see, who you can reach, and w
 - Contact list management (NIP-02)
 - Verified user badges (NIP-05)
 
-### 💰 Lightning Wallet
+### 💰 Lightning Wallet & eCash
 - Nostr Wallet Connect (NWC) integration
-- Send and receive Bitcoin payments
+- Cashu eCash for anonymous payments
+- Send and receive Bitcoin via Lightning
+- Swap between Lightning ⇄ eCash
 - Transaction history
-- ⚡ Zap support for posts and users
+- ⚡ Zap support for posts and users (NIP-57)
+
+### 🛒 Marketplace (NIP-15)
+- Browse decentralized product listings
+- Filter by category, price, condition
+- Web of Trust integration for seller reputation
+- Direct messaging with sellers
+- Pay with Lightning or eCash
+
+### 🤖 AI Chat (NIP-90)
+- Decentralized AI via Data Vending Machines
+- Pay-per-use with Lightning sats
+- Text generation, translation, summarization
+- No accounts, no tracking
 
 ### 🔍 Search
 - Search notes by content
@@ -93,6 +112,8 @@ In a world where social platforms control what you see, who you can reach, and w
 | **Database** | [Dexie.js](https://dexie.org) (IndexedDB wrapper) |
 | **Crypto** | [@noble](https://github.com/paulmillr/noble-curves) libraries |
 | **Testing** | [Vitest](https://vitest.dev) + [Playwright](https://playwright.dev) |
+| **Mobile** | [Capacitor](https://capacitorjs.com) |
+| **eCash** | [Cashu-TS](https://github.com/cashubtc/cashu-ts) |
 | **Icons** | [Lucide](https://lucide.dev) |
 | **Validation** | [Zod](https://zod.dev) |
 
@@ -142,25 +163,34 @@ AURA/
 ├── src/
 │   ├── lib/
 │   │   ├── components/     # Reusable UI components
+│   │   │   ├── cashu/      # eCash components
 │   │   │   ├── feed/       # Feed-related components
+│   │   │   ├── media/      # Media upload (Blossom)
 │   │   │   ├── notifications/
+│   │   │   ├── wot/        # Web of Trust components
 │   │   │   └── ui/         # Base UI components
 │   │   ├── core/           # Core utilities (errors, resilience)
 │   │   ├── db/             # Dexie.js database
 │   │   ├── i18n/           # Internationalization
 │   │   ├── services/       # Business logic services
-│   │   │   ├── crypto/     # Encryption (NIP-44)
+│   │   │   ├── blossom/    # Decentralized file storage
+│   │   │   ├── crypto/     # Encryption (NIP-44, Gift Wrap)
+│   │   │   ├── dvm/        # Data Vending Machines (AI)
 │   │   │   ├── ndk/        # NDK service modules
-│   │   │   └── wallet/     # NWC client
+│   │   │   └── wallet/     # NWC + Cashu eCash
 │   │   ├── stores/         # Svelte 5 runes stores
 │   │   ├── utils/          # Utility functions
 │   │   └── validators/     # Zod schemas & sanitization
 │   ├── routes/             # SvelteKit routes
+│   │   ├── ai/             # AI Chat page
+│   │   ├── marketplace/    # NIP-15 Marketplace
+│   │   └── ...
 │   └── app.css             # Global styles
 ├── static/                 # Static assets
-├── tests/                  # Test files
+├── tests/                  # Test files (158+ tests)
 │   ├── e2e/                # Playwright E2E tests
 │   └── unit/               # Vitest unit tests
+├── android/                # Capacitor Android (generated)
 └── ...config files
 ```
 
@@ -174,10 +204,16 @@ AURA/
 | NIP-05 | DNS Verification | ✅ |
 | NIP-07 | Browser Extension | ✅ |
 | NIP-10 | Replies & Threading | ✅ |
+| NIP-15 | Marketplace Listings | ✅ |
+| NIP-17 | Gift Wraps (Private DMs) | ✅ |
 | NIP-18 | Reposts | ✅ |
 | NIP-25 | Reactions | ✅ |
 | NIP-44 | Versioned Encryption | ✅ |
 | NIP-47 | Nostr Wallet Connect | ✅ |
+| NIP-57 | Lightning Zaps | ✅ |
+| NIP-59 | Gift Wrap Protocol | ✅ |
+| NIP-90 | Data Vending Machines (AI) | ✅ |
+| NIP-98 | HTTP Auth (Blossom) | ✅ |
 
 ### Available Scripts
 
@@ -221,6 +257,33 @@ Once deployed, access AURA via any IPFS gateway:
 - `https://ipfs.io/ipfs/<CID>`
 - `https://dweb.link/ipfs/<CID>`
 - `https://cloudflare-ipfs.com/ipfs/<CID>`
+
+### 📱 Mobile Build (Android/iOS)
+
+AURA uses Capacitor for native mobile builds:
+
+```bash
+# Build web assets
+bun run build
+
+# Add Android platform (first time only)
+bunx cap add android
+
+# Sync web assets to native
+bunx cap sync android
+
+# Open in Android Studio
+bunx cap open android
+```
+
+**Build APK in Android Studio:**
+1. Open Android Studio
+2. Build > Build Bundle(s) / APK(s) > Build APK(s)
+3. APK location: `android/app/build/outputs/apk/`
+
+**Requirements:**
+- Android Studio with Android SDK
+- For release builds: signing key
 
 ---
 
