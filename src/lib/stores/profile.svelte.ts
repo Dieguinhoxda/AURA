@@ -57,18 +57,23 @@ function createProfileStore() {
 
 			// Fetch fresh from relays
 			const event = await ndkService.fetchProfile(authStore.pubkey);
-			if (event) {
-				const parsed = JSON.parse(event.content);
-				profile = {
-					name: parsed.name,
-					display_name: parsed.display_name,
-					about: parsed.about,
-					picture: parsed.picture,
-					banner: parsed.banner,
-					website: parsed.website,
-					nip05: parsed.nip05,
-					lud16: parsed.lud16
-				};
+			if (event?.content) {
+				try {
+					const parsed = JSON.parse(event.content);
+					profile = {
+						name: parsed.name,
+						display_name: parsed.display_name,
+						about: parsed.about,
+						picture: parsed.picture,
+						banner: parsed.banner,
+						website: parsed.website,
+						nip05: parsed.nip05,
+						lud16: parsed.lud16
+					};
+				} catch (parseError) {
+					console.warn('[Profile] Failed to parse profile content:', parseError);
+					// Keep the cached profile if parsing fails
+				}
 			}
 
 			isDirty = false;

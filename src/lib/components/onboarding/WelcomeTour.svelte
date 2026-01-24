@@ -162,7 +162,7 @@
 
 			<!-- Progress dots -->
 			<div class="mt-8 flex justify-center gap-2">
-				{#each slides as _, i}
+				{#each slides as slide, i (slide.title)}
 					<button
 						class="h-2 rounded-full transition-all {(
 							i === currentSlide

@@ -55,12 +55,17 @@
 	let verificationInputs = $state<string[]>(['', '', '']);
 	let verificationError = $state(false);
 
+	// Local error state for better UX
+	let loginError = $state<string | null>(null);
+
 	async function handleExtensionLogin() {
 		mode = 'extension';
+		loginError = null;
 		try {
 			await authStore.loginWithExtension();
 			goto('/');
 		} catch (e) {
+			loginError = e instanceof Error ? e.message : 'Extension login failed. Please try again.';
 			mode = 'select';
 		}
 	}
@@ -68,11 +73,12 @@
 	async function handleNsecLogin() {
 		if (!nsecInput.trim()) return;
 
+		loginError = null;
 		try {
 			await authStore.loginWithPrivateKey(nsecInput);
 			goto('/');
 		} catch (e) {
-			// Error is handled in authStore
+			loginError = e instanceof Error ? e.message : 'Login failed. Please check your key and try again.';
 		}
 	}
 
@@ -116,6 +122,7 @@
 
 		if (isValid) {
 			verificationError = false;
+			loginError = null;
 			// Login with the generated key
 			try {
 				await authStore.loginWithPrivateKey(
@@ -123,7 +130,7 @@
 				);
 				mode = 'success';
 			} catch (e) {
-				// Error handled in authStore
+				loginError = e instanceof Error ? e.message : 'Failed to create account. Please try again.';
 			}
 		} else {
 			verificationError = true;
@@ -161,6 +168,7 @@ Public Key (npub): ${generatedKeys.npub}
 		wordsConfirmed = false;
 		verificationInputs = ['', '', ''];
 		verificationError = false;
+		loginError = null;
 	}
 
 	const hasExtension = authStore.hasExtension();
@@ -264,11 +272,14 @@ Public Key (npub): ${generatedKeys.npub}
 					</Button>
 				</CardContent>
 
-				{#if authStore.error}
+				{#if authStore.error || loginError}
 					<CardFooter>
-						<p class="w-full text-center text-sm text-destructive">
-							{authStore.error}
-						</p>
+						<div class="w-full rounded-lg bg-destructive/10 p-3 text-center">
+							<AlertTriangle class="mx-auto mb-2 h-5 w-5 text-destructive" />
+							<p class="text-sm text-destructive">
+								{loginError || authStore.error}
+							</p>
+						</div>
 					</CardFooter>
 				{/if}
 			</Card>
@@ -311,6 +322,17 @@ Public Key (npub): ${generatedKeys.npub}
 							enter it again if you clear your browser data.
 						</p>
 					</div>
+
+					{#if loginError || authStore.error}
+						<div
+							class="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-destructive"
+						>
+							<AlertTriangle class="mt-0.5 h-4 w-4 shrink-0" />
+							<p class="text-sm">
+								{loginError || authStore.error}
+							</p>
+						</div>
+					{/if}
 				</CardContent>
 				<CardFooter class="flex gap-3">
 					<Button
@@ -504,6 +526,17 @@ Public Key (npub): ${generatedKeys.npub}
 							your account.
 						</p>
 					</div>
+
+					{#if loginError}
+						<div
+							class="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-destructive"
+						>
+							<AlertTriangle class="mt-0.5 h-4 w-4 shrink-0" />
+							<p class="text-sm">
+								{loginError}
+							</p>
+						</div>
+					{/if}
 				</CardContent>
 				<CardFooter class="flex gap-3">
 					<Button

@@ -108,9 +108,18 @@
 
 	async function copyInvoice() {
 		if (zapResult?.invoice) {
-			await navigator.clipboard.writeText(zapResult.invoice);
-			copied = true;
-			setTimeout(() => (copied = false), 2000);
+			try {
+				if (!navigator.clipboard?.writeText) {
+					notificationsStore.error('Copy failed', 'Clipboard API not available');
+					return;
+				}
+				await navigator.clipboard.writeText(zapResult.invoice);
+				copied = true;
+				setTimeout(() => (copied = false), 2000);
+			} catch (e) {
+				console.error('Failed to copy invoice:', e);
+				notificationsStore.error('Copy failed', 'Could not copy to clipboard');
+			}
 		}
 	}
 
@@ -242,7 +251,7 @@
 								<div
 									class="absolute inset-0 pointer-events-none"
 								>
-									{#each Array(8) as _, i}
+									{#each Array(8) as _, i (i)}
 										<span
 											class="flying-sat absolute text-2xl"
 											style="left: {20 +

@@ -6,6 +6,7 @@
 
 import { nwcClient, NWCClient, type WalletInfo, type InvoiceResponse, formatSats, formatMsats, parseInvoice } from '$lib/services/wallet';
 import { relayManager } from '$lib/services/ndk/relay-manager';
+import ndkService from '$lib/services/ndk';
 import { dbHelpers } from '$db';
 import { ErrorHandler, WalletError, ErrorCode } from '$lib/core/errors';
 import type { NDKEvent } from '@nostr-dev-kit/ndk';
@@ -34,6 +35,9 @@ function createWalletStore() {
 	let error = $state<string | null>(null);
 	let isLoading = $state(false);
 
+	// Store reference to listener for cleanup
+	let nwcListenerRemover: (() => void) | null = null;
+
 	// Derived
 	const isConnected = $derived(status === 'connected');
 	const formattedBalance = $derived(formatSats(balance));
@@ -58,8 +62,11 @@ function createWalletStore() {
 			// Fetch recent transactions
 			await refreshTransactions();
 
-			// Set up event listeners
-			nwcClient.addListener((event) => {
+			// Set up event listeners (cleanup old one first if exists)
+			if (nwcListenerRemover) {
+				nwcListenerRemover();
+			}
+			nwcListenerRemover = nwcClient.addListener((event) => {
 				if (event.type === 'disconnected') {
 					status = 'disconnected';
 				} else if (event.type === 'error') {
@@ -80,6 +87,12 @@ function createWalletStore() {
 
 	/** Disconnect wallet */
 	function disconnect(): void {
+		// Clean up listener
+		if (nwcListenerRemover) {
+			nwcListenerRemover();
+			nwcListenerRemover = null;
+		}
+
 		nwcClient.disconnect();
 		status = 'disconnected';
 		balance = 0;
@@ -199,22 +212,74 @@ function createWalletStore() {
 	}
 
 	/** Zap a note (send sats to note author) */
-	async function zapNote(event: NDKEvent, amountSats: number): Promise<void> {
+	async function zapNote(event: NDKEvent, amountSats: number, comment?: string): Promise<void> {
 		if (!isConnected) {
 			throw new WalletError('Wallet not connected', { code: ErrorCode.WALLET_NOT_CONNECTED });
 		}
 
-		// Get author's lightning address from their profile
-		// This is a simplified version - real implementation would:
-		// 1. Fetch author's kind:0 profile
-		// 2. Get lud16 (lightning address)
-		// 3. Fetch LNURL callback
-		// 4. Create zap request (kind:9734)
-		// 5. Get invoice from LNURL
-		// 6. Pay invoice
-		// 7. Publish zap receipt (kind:9735)
+		isLoading = true;
+		try {
+			// Get author's profile to find their lightning address
+			const { zapService } = await import('$services/zap');
+			
+			let profile = await dbHelpers.getProfile(event.pubkey);
+			
+			// If not in cache, try to fetch
+			if (!profile) {
+				await ndkService.fetchProfile(event.pubkey);
+				profile = await dbHelpers.getProfile(event.pubkey);
+			}
+			
+			// Check if author has a lightning address
+			const lnurl = profile?.lud16;
+			if (!lnurl) {
+				throw new WalletError('Recipient has no lightning address', { 
+					code: ErrorCode.PAYMENT_FAILED,
+					userMessage: 'This user cannot receive zaps (no lightning address)'
+				});
+			}
 
-		throw new WalletError('Zaps not yet implemented', { code: ErrorCode.NOT_IMPLEMENTED });
+			// Send zap via zap service
+			const result = await zapService.sendZap({
+				recipientPubkey: event.pubkey,
+				amount: amountSats * 1000, // Convert to millisats
+				lnurl,
+				comment,
+				eventId: event.id,
+				relays: ndkService.connectedRelays.slice(0, 3)
+			});
+
+			// Check if payment was successful
+			if (result.paymentResult?.success) {
+				// Refresh balance after payment
+				await refreshBalance();
+				
+				// Add to transactions
+				const tx: WalletTransaction = {
+					id: result.paymentResult.preimage || `zap-${Date.now()}`,
+					type: 'outgoing',
+					amount: amountSats,
+					description: `Zap to ${event.pubkey.slice(0, 8)}...`,
+					timestamp: Math.floor(Date.now() / 1000),
+					status: 'settled',
+					invoice: result.invoice
+				};
+				transactions = [tx, ...transactions];
+			} else if (result.paymentAttempted) {
+				// Payment was attempted but failed
+				throw new WalletError(result.paymentResult?.error || 'Payment failed', {
+					code: ErrorCode.PAYMENT_FAILED
+				});
+			} else {
+				// No payment method available - return the invoice
+				throw new WalletError('No wallet available. Copy the invoice manually.', {
+					code: ErrorCode.WALLET_NOT_CONNECTED,
+					details: { invoice: result.invoice }
+				});
+			}
+		} finally {
+			isLoading = false;
+		}
 	}
 
 	/** Send sats to a lightning address */
@@ -284,6 +349,15 @@ function createWalletStore() {
 		error = null;
 	}
 
+	/** Cleanup all resources */
+	function destroy(): void {
+		if (nwcListenerRemover) {
+			nwcListenerRemover();
+			nwcListenerRemover = null;
+		}
+		nwcClient.disconnect();
+	}
+
 	return {
 		// State (readonly)
 		get status() { return status; },
@@ -309,7 +383,8 @@ function createWalletStore() {
 		sendToAddress,
 		parseInvoiceDetails,
 		formatSats, // Export utility function
-		clearError
+		clearError,
+		destroy
 	};
 }
 

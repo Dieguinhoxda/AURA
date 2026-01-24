@@ -52,6 +52,7 @@ const MAX_TOASTS = 5;
 function createNotificationsStore() {
 	let toasts = $state<Toast[]>([]);
 	let timeouts = new Map<string, ReturnType<typeof setTimeout>>();
+	let errorListenerRemover: (() => void) | null = null;
 
 	/** Generate unique ID */
 	function generateId(): string {
@@ -177,12 +178,21 @@ function createNotificationsStore() {
 
 	// Connect to error handler
 	if (typeof window !== 'undefined') {
-		ErrorHandler.addListener((auraError) => {
+		errorListenerRemover = ErrorHandler.addListener((auraError) => {
 			// Auto-show errors with severity >= warning
 			if (['error', 'critical'].includes(auraError.severity)) {
 				showError(auraError);
 			}
 		});
+	}
+
+	/** Cleanup error handler listener */
+	function destroy(): void {
+		if (errorListenerRemover) {
+			errorListenerRemover();
+			errorListenerRemover = null;
+		}
+		clearAll();
 	}
 
 	return {
@@ -200,7 +210,10 @@ function createNotificationsStore() {
 		warning,
 		error,
 		showError,
-		promise
+		promise,
+
+		// Cleanup
+		destroy
 	};
 }
 

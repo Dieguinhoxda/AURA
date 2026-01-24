@@ -285,6 +285,12 @@ function createMarketplaceStore() {
 				filter['#t'] = [filters.category];
 			}
 
+			if (!ndkService.ndk) {
+				console.warn('[Marketplace] NDK not initialized');
+				error = 'Connection not ready. Please try again.';
+				return;
+			}
+
 			// Fetch initial listings
 			const events = await ndkService.ndk.fetchEvents(filter);
 			const newListings: ProductListing[] = [];
@@ -362,6 +368,11 @@ function createMarketplaceStore() {
 
 			if (filters.category) {
 				filter['#t'] = [filters.category];
+			}
+
+			if (!ndkService.ndk) {
+				console.warn('[Marketplace] NDK not initialized');
+				return;
 			}
 
 			const events = await ndkService.ndk.fetchEvents(filter);

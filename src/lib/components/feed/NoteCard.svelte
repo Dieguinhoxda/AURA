@@ -194,19 +194,31 @@
 					title: `Note by ${displayName}`,
 					text: shareText,
 				});
-			} else {
+			} else if (navigator.clipboard?.writeText) {
 				await navigator.clipboard.writeText(noteUrl);
 				notificationsStore.success('Link copied!', 'Share it anywhere');
+			} else {
+				notificationsStore.error(
+					'Cannot share',
+					'Clipboard API not available',
+				);
 			}
 		} catch (e) {
 			// User cancelled share dialog - try clipboard fallback
 			if ((e as Error).name !== 'AbortError') {
 				try {
-					await navigator.clipboard.writeText(noteUrl);
-					notificationsStore.success(
-						'Link copied!',
-						'Share it anywhere',
-					);
+					if (navigator.clipboard?.writeText) {
+						await navigator.clipboard.writeText(noteUrl);
+						notificationsStore.success(
+							'Link copied!',
+							'Share it anywhere',
+						);
+					} else {
+						notificationsStore.error(
+							'Failed to share',
+							'Clipboard not available',
+						);
+					}
 				} catch {
 					notificationsStore.error(
 						'Failed to share',

@@ -168,6 +168,11 @@ class MediaService {
 	 */
 	async uploadFromClipboard(onProgress?: UploadProgressCallback): Promise<MediaUploadResult | null> {
 		try {
+			// Check if clipboard API is available
+			if (!navigator.clipboard?.read) {
+				console.warn('[Media] Clipboard API not available');
+				return null;
+			}
 			const items = await navigator.clipboard.read();
 			
 			for (const item of items) {

@@ -333,6 +333,11 @@ function createFeedStore() {
 			filter.limit = 20;
 			filter.until = until;
 
+			if (!ndkService.ndk) {
+				console.warn('[Feed] NDK not initialized');
+				return;
+			}
+
 			const newEvents = await ndkService.ndk.fetchEvents(filter);
 
 			if (newEvents.size === 0) {

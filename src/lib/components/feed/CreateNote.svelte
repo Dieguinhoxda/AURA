@@ -110,7 +110,7 @@
 			<!-- Attached images preview -->
 			{#if attachedImages.length > 0}
 				<div class="mb-3 flex flex-wrap gap-2">
-					{#each attachedImages as imageUrl}
+					{#each attachedImages as imageUrl (imageUrl)}
 						<div class="relative">
 							<img
 								src={imageUrl}

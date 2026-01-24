@@ -62,6 +62,10 @@ class ProfileManager {
 		};
 
 		try {
+			if (!ndkService.ndk) {
+				console.warn('[ProfileManager] NDK not initialized');
+				return cached || null;
+			}
 			const events = await ndkService.ndk.fetchEvents(filter);
 			const latestEvent = Array.from(events)
 				.sort((a, b) => (b.created_at || 0) - (a.created_at || 0))[0];
@@ -144,6 +148,9 @@ class ProfileManager {
 		);
 
 		// Create and publish kind:0 event
+		if (!ndkService.ndk) {
+			throw new ValidationError('NDK not initialized', undefined, { code: ErrorCode.AUTH_FAILED });
+		}
 		const event = new NDKEvent(ndkService.ndk);
 		event.kind = 0;
 		event.content = JSON.stringify(cleanMetadata);

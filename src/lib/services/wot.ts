@@ -88,6 +88,10 @@ class WoTService {
 	 */
 	private async loadMyContacts(): Promise<void> {
 		if (!this.myPubkey) return;
+		if (!ndkService.ndk) {
+			console.warn('[WoT] NDK not initialized');
+			return;
+		}
 
 		try {
 			// Load follows (kind:3)
@@ -138,6 +142,10 @@ class WoTService {
 	 */
 	private async buildGraph(): Promise<void> {
 		if (!this.myPubkey || this.myFollows.size === 0) return;
+		if (!ndkService.ndk) {
+			console.warn('[WoT] NDK not initialized');
+			return;
+		}
 
 		try {
 			// Load contact lists of my follows (level 2)
@@ -365,7 +373,7 @@ class WoTService {
 	async mute(pubkey: string): Promise<void> {
 		this.myMuted.add(pubkey);
 		this.trustCache.delete(pubkey);
-		// TODO: Publish updated mute list (kind:10000)
+		await this.publishMuteList();
 	}
 
 	/**
@@ -374,7 +382,36 @@ class WoTService {
 	async unmute(pubkey: string): Promise<void> {
 		this.myMuted.delete(pubkey);
 		this.trustCache.delete(pubkey);
-		// TODO: Publish updated mute list (kind:10000)
+		await this.publishMuteList();
+	}
+
+	/**
+	 * Publish updated mute list to relays (kind:10000)
+	 * NIP-51: Lists - Mute list is a replaceable event
+	 */
+	private async publishMuteList(): Promise<void> {
+		if (!this.myPubkey || !ndkService.ndk) {
+			console.warn('[WoT] Cannot publish mute list: not initialized');
+			return;
+		}
+
+		try {
+			const { NDKEvent } = await import('@nostr-dev-kit/ndk');
+			const event = new NDKEvent(ndkService.ndk);
+			
+			// Kind 10000 is the mute list (NIP-51)
+			event.kind = 10000;
+			event.content = ''; // Content can be encrypted but we keep it simple
+			
+			// Build tags from muted pubkeys
+			event.tags = Array.from(this.myMuted).map(pubkey => ['p', pubkey]);
+			
+			await ndkService.publish(event);
+			console.log('[WoT] Mute list published with', this.myMuted.size, 'entries');
+		} catch (e) {
+			console.error('[WoT] Failed to publish mute list:', e);
+			// Don't throw - the local state is already updated
+		}
 	}
 
 	/**

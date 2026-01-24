@@ -194,6 +194,11 @@ class DVMService {
 		onResult: (result: DVMJobResult) => void,
 		onError: (error: string) => void
 	): void {
+		if (!ndkService.ndk) {
+			onError('NDK not initialized');
+			return;
+		}
+
 		const resultKind = getResultKind(request.kind);
 
 		// Subscribe to results and feedback
@@ -468,6 +473,11 @@ class DVMService {
 		nip05?: string;
 		supportedKinds: number[];
 	}[]> {
+		if (!ndkService.ndk) {
+			console.warn('[DVM] NDK not initialized');
+			return [];
+		}
+
 		// DVMs advertise via NIP-89 (kind:31990)
 		const filter: NDKFilter = {
 			kinds: [31990],

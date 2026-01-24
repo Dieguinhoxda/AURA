@@ -226,7 +226,7 @@
 			</div>
 		{:else if previewUrls.length > 0}
 			<div class="grid grid-cols-2 gap-2 p-4">
-				{#each previewUrls as url}
+				{#each previewUrls as url (url)}
 					<div class="relative">
 						<img
 							src={url}

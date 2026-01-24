@@ -98,7 +98,7 @@ function createMessagesStore() {
 
 			// Use NDK decryption
 			const signer = ndkService.signer;
-			if (signer && 'decrypt' in signer) {
+			if (signer && 'decrypt' in signer && ndkService.ndk) {
 				const user = ndkService.ndk.getUser({ pubkey: otherPubkey });
 				return await (signer as any).decrypt(user, event.content);
 			}
@@ -125,7 +125,7 @@ function createMessagesStore() {
 
 			// Use NDK encryption
 			const signer = ndkService.signer;
-			if (signer && 'encrypt' in signer) {
+			if (signer && 'encrypt' in signer && ndkService.ndk) {
 				const user = ndkService.ndk.getUser({ pubkey: recipientPubkey });
 				return await (signer as any).encrypt(user, content);
 			}
@@ -450,6 +450,11 @@ function createMessagesStore() {
 		isLoading = true;
 
 		try {
+			if (!ndkService.ndk) {
+				console.warn('[Messages] NDK not initialized');
+				return;
+			}
+
 			// Load NIP-04 messages (kind:4)
 			const nip04Filter: NDKFilter = {
 				kinds: [4],

@@ -56,6 +56,10 @@ class ContactsService {
 		};
 
 		try {
+			if (!ndkService.ndk) {
+				console.warn('[Contacts] NDK not initialized, returning cached contacts');
+				return this.contacts;
+			}
 			const events = await ndkService.ndk.fetchEvents(filter);
 			const latestEvent = Array.from(events)
 				.sort((a, b) => (b.created_at || 0) - (a.created_at || 0))[0];

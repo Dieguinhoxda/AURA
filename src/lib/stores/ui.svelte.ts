@@ -47,6 +47,15 @@ function createUIStore() {
 	let isReducedMotion = $state(false);
 	let breakpoint = $state<Breakpoint>('lg');
 
+	// Store references to listeners for cleanup
+	let themeMediaQuery: MediaQueryList | null = null;
+	let motionMediaQuery: MediaQueryList | null = null;
+	let themeChangeHandler: ((e: MediaQueryListEvent) => void) | null = null;
+	let motionChangeHandler: ((e: MediaQueryListEvent) => void) | null = null;
+	let onlineHandler: (() => void) | null = null;
+	let offlineHandler: (() => void) | null = null;
+	let resizeHandler: (() => void) | null = null;
+
 	// Initialize from localStorage and system preferences
 	if (browser) {
 		// Theme
@@ -65,31 +74,36 @@ function createUIStore() {
 		updateResolvedTheme();
 
 		// Listen for system theme changes
-		const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-		mediaQuery.addEventListener('change', () => {
+		themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+		themeChangeHandler = () => {
 			if (theme === 'system') {
 				updateResolvedTheme();
 			}
-		});
+		};
+		themeMediaQuery.addEventListener('change', themeChangeHandler);
 
 		// Listen for reduced motion preference
-		const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-		isReducedMotion = motionQuery.matches;
-		motionQuery.addEventListener('change', (e) => {
+		motionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+		isReducedMotion = motionMediaQuery.matches;
+		motionChangeHandler = (e) => {
 			isReducedMotion = e.matches;
-		});
+		};
+		motionMediaQuery.addEventListener('change', motionChangeHandler);
 
 		// Listen for online/offline
-		window.addEventListener('online', () => {
+		onlineHandler = () => {
 			isOnline = true;
-		});
-		window.addEventListener('offline', () => {
+		};
+		offlineHandler = () => {
 			isOnline = false;
-		});
+		};
+		window.addEventListener('online', onlineHandler);
+		window.addEventListener('offline', offlineHandler);
 
 		// Listen for resize
+		resizeHandler = updateBreakpoint;
 		updateBreakpoint();
-		window.addEventListener('resize', updateBreakpoint);
+		window.addEventListener('resize', resizeHandler);
 	}
 
 	function updateResolvedTheme() {
@@ -191,6 +205,36 @@ function createUIStore() {
 		bottomNavVisible = visible;
 	}
 
+	/** Cleanup all event listeners */
+	function destroy(): void {
+		if (!browser) return;
+
+		if (themeMediaQuery && themeChangeHandler) {
+			themeMediaQuery.removeEventListener('change', themeChangeHandler);
+		}
+		if (motionMediaQuery && motionChangeHandler) {
+			motionMediaQuery.removeEventListener('change', motionChangeHandler);
+		}
+		if (onlineHandler) {
+			window.removeEventListener('online', onlineHandler);
+		}
+		if (offlineHandler) {
+			window.removeEventListener('offline', offlineHandler);
+		}
+		if (resizeHandler) {
+			window.removeEventListener('resize', resizeHandler);
+		}
+
+		// Clear references
+		themeMediaQuery = null;
+		motionMediaQuery = null;
+		themeChangeHandler = null;
+		motionChangeHandler = null;
+		onlineHandler = null;
+		offlineHandler = null;
+		resizeHandler = null;
+	}
+
 	/** Check if device is mobile */
 	const isMobile = $derived(['xs', 'sm'].includes(breakpoint));
 
@@ -228,7 +272,8 @@ function createUIStore() {
 		openSearch,
 		closeSearch,
 		toggleCommandPalette,
-		setBottomNavVisible
+		setBottomNavVisible,
+		destroy
 	};
 }
 

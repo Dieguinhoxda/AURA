@@ -255,13 +255,18 @@ function createAuthStore() {
 
 			// Then fetch fresh
 			const event = await ndkService.fetchProfile(pubkey);
-			if (event) {
-				const parsed = JSON.parse(event.content);
-				profile = {
-					pubkey,
-					...parsed,
-					updated_at: Date.now()
-				};
+			if (event?.content) {
+				try {
+					const parsed = JSON.parse(event.content);
+					profile = {
+						pubkey,
+						...parsed,
+						updated_at: Date.now()
+					};
+				} catch (parseError) {
+					console.warn('[Auth] Failed to parse profile content:', parseError);
+					// Keep the cached profile if parsing fails
+				}
 			}
 		} catch (e) {
 			console.error('Failed to fetch profile:', e);

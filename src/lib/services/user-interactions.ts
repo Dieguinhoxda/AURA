@@ -118,6 +118,10 @@ class UserInteractionsService {
 	/** Internal fetch implementation */
 	private async _doFetch(eventIds: string[]): Promise<void> {
 		if (!this._userPubkey) return;
+		if (!ndkService.ndk) {
+			console.warn('[UserInteractions] NDK not initialized');
+			return;
+		}
 
 		try {
 			// Fetch reactions (kind 7) from current user targeting these events
@@ -214,6 +218,10 @@ class UserInteractionsService {
 	/** Internal fetch all implementation */
 	private async _doFetchAll(): Promise<void> {
 		if (!this._userPubkey) return;
+		if (!ndkService.ndk) {
+			console.warn('[UserInteractions] NDK not initialized');
+			return;
+		}
 
 		// Only fetch recent interactions (last 30 days)
 		const since = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60;

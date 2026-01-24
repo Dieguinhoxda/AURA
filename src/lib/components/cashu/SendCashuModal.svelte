@@ -80,6 +80,10 @@
 		if (!generatedToken) return;
 		
 		try {
+			if (!navigator.clipboard?.writeText) {
+				console.error('Clipboard API not available');
+				return;
+			}
 			await navigator.clipboard.writeText(generatedToken);
 			copied = true;
 			setTimeout(() => { copied = false; }, 2000);

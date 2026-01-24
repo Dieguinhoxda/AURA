@@ -215,7 +215,7 @@
 			</div>
 			<div class="max-h-96 overflow-y-auto p-4">
 				<div class="space-y-2">
-					{#each shortcuts as shortcut}
+					{#each shortcuts as shortcut (shortcut.key)}
 						<div class="flex items-center justify-between py-1">
 							<span class="text-sm text-muted-foreground">
 								{shortcut.description}

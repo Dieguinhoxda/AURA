@@ -172,6 +172,12 @@ class ZapService {
 			});
 		}
 
+		if (!ndkService.ndk) {
+			throw new WalletError('NDK not initialized', {
+				code: ErrorCode.WALLET_ERROR
+			});
+		}
+
 		const event = new NDKEvent(ndkService.ndk);
 		event.kind = 9734;
 		event.content = params.comment || '';
