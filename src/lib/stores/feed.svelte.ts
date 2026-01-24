@@ -7,8 +7,9 @@
 import type { NDKEvent, NDKFilter } from '@nostr-dev-kit/ndk';
 import ndkService, { subscriptionManager } from '$services/ndk';
 import { dbHelpers, type UserProfile } from '$db';
-import { ErrorHandler, NetworkError, ErrorCode } from '$lib/core/errors';
+import { ErrorHandler } from '$lib/core/errors';
 import { contactsService } from '$lib/services/contacts';
+import { userInteractionsService } from '$lib/services/user-interactions';
 
 /** Feed event with additional metadata */
 export interface FeedEvent {
@@ -98,14 +99,18 @@ function createFeedStore() {
 		const author = await getProfile(event.pubkey);
 		const counts = reactionCache.get(event.id) || { reactions: 0, reposts: 0 };
 
+		// Check if current user has interacted with this event
+		const hasReacted = userInteractionsService.hasReacted(event.id);
+		const hasReposted = userInteractionsService.hasReposted(event.id);
+
 		return {
 			event,
 			author,
 			replyCount: 0,
 			reactionCount: counts.reactions,
 			repostCount: counts.reposts,
-			hasReacted: false,
-			hasReposted: false
+			hasReacted,
+			hasReposted
 		};
 	}
 
@@ -117,6 +122,11 @@ function createFeedStore() {
 		}
 		// Also clean up by label as fallback
 		subscriptionManager.unsubscribeByLabel(subscriptionLabel);
+	}
+
+	/** Check if an event should be filtered (deleted by user) */
+	function shouldFilterEvent(eventId: string): boolean {
+		return userInteractionsService.isDeleted(eventId);
 	}
 
 	/** Build filter based on feed type */
@@ -184,9 +194,17 @@ function createFeedStore() {
 		}, 3500);
 
 		try {
+			// Set up user interactions service with current user
+			const authPubkey = (await import('./auth.svelte')).default.pubkey;
+			userInteractionsService.setUser(authPubkey || null);
+
+			// Fetch user interactions in background (don't block feed loading)
+			if (authPubkey) {
+				userInteractionsService.fetchAll().catch(console.error);
+			}
+
 			// Load contacts if we need them for following feed
 			if (type === 'following') {
-				const authPubkey = (await import('./auth.svelte')).default.pubkey;
 				if (authPubkey) {
 					try {
 						await contactsService.fetchContacts(authPubkey);
@@ -211,7 +229,8 @@ function createFeedStore() {
 			if (cachedEvents.length > 0) {
 				const feedEvents = await Promise.all(
 					cachedEvents
-						.filter(e => !seenIds.has(e.id))
+						// Filter out duplicates and deleted events
+						.filter(e => !seenIds.has(e.id) && !shouldFilterEvent(e.id))
 						.map(async (e) => {
 							seenIds.add(e.id);
 							const { NDKEvent } = await import('@nostr-dev-kit/ndk');
@@ -240,6 +259,9 @@ function createFeedStore() {
 						// Deduplicate
 						if (seenIds.has(event.id)) return;
 						seenIds.add(event.id);
+
+						// Skip deleted events
+						if (shouldFilterEvent(event.id)) return;
 
 						const feedEvent = await toFeedEvent(event);
 
@@ -318,7 +340,8 @@ function createFeedStore() {
 			} else {
 				const feedEvents = await Promise.all(
 					Array.from(newEvents)
-						.filter(e => !seenIds.has(e.id))
+						// Filter out duplicates and deleted events
+						.filter(e => !seenIds.has(e.id) && !shouldFilterEvent(e.id))
 						.map(async (e) => {
 							seenIds.add(e.id);
 							return toFeedEvent(e);
@@ -411,7 +434,8 @@ function createFeedStore() {
 		// Store previous state for rollback
 		const previousState = { ...events[eventIndex] };
 
-		// Optimistic update
+		// Optimistic update - both local state and interactions cache
+		userInteractionsService.addReaction(event.id);
 		events = events.map((e) => {
 			if (e.event.id === event.id) {
 				return {
@@ -426,10 +450,12 @@ function createFeedStore() {
 		try {
 			await ndkService.react(event, reaction);
 		} catch (e) {
-			// Rollback
+			// Rollback UI state
 			events = events.map(e =>
 				e.event.id === event.id ? previousState : e
 			);
+			// Note: We don't rollback the interactions cache as it would require
+			// a more complex state management. The cache will refresh on next load.
 			throw e;
 		}
 	}
@@ -442,7 +468,8 @@ function createFeedStore() {
 		// Store previous state for rollback
 		const previousState = { ...events[eventIndex] };
 
-		// Optimistic update
+		// Optimistic update - both local state and interactions cache
+		userInteractionsService.addRepost(event.id);
 		events = events.map((e) => {
 			if (e.event.id === event.id) {
 				return {
@@ -457,7 +484,7 @@ function createFeedStore() {
 		try {
 			await ndkService.repost(event);
 		} catch (e) {
-			// Rollback
+			// Rollback UI state
 			events = events.map(e =>
 				e.event.id === event.id ? previousState : e
 			);
@@ -472,7 +499,8 @@ function createFeedStore() {
 
 		const previousEvents = [...events];
 
-		// Optimistic update: remove from feed
+		// Optimistic update: add to deletions cache and remove from feed
+		userInteractionsService.addDeletion(eventId);
 		events = events.filter(e => e.event.id !== eventId);
 
 		try {

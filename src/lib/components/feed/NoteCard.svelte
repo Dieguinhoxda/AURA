@@ -104,6 +104,12 @@
 		isReacting = true;
 		try {
 			await feedStore.react(event);
+		} catch (e) {
+			console.error('Failed to react:', e);
+			notificationsStore.error(
+				'Failed to like',
+				'Please try again later'
+			);
 		} finally {
 			isReacting = false;
 		}
@@ -115,6 +121,12 @@
 		showRepostMenu = false;
 		try {
 			await feedStore.repost(event);
+		} catch (e) {
+			console.error('Failed to repost:', e);
+			notificationsStore.error(
+				'Failed to repost',
+				'Please try again later'
+			);
 		} finally {
 			isReposting = false;
 		}
