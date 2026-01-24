@@ -4,7 +4,8 @@
  * Manages Lightning wallet connection and operations via NWC (NIP-47).
  */
 
-import { nwcClient, type WalletInfo, type InvoiceResponse, formatSats, formatMsats, parseInvoice } from '$lib/services/wallet';
+import { nwcClient, NWCClient, type WalletInfo, type InvoiceResponse, formatSats, formatMsats, parseInvoice } from '$lib/services/wallet';
+import { relayManager } from '$lib/services/ndk/relay-manager';
 import { dbHelpers } from '$db';
 import { ErrorHandler, WalletError, ErrorCode } from '$lib/core/errors';
 import type { NDKEvent } from '@nostr-dev-kit/ndk';
@@ -91,9 +92,24 @@ function createWalletStore() {
 	/** Reconnect using saved connection */
 	async function reconnect(): Promise<void> {
 		const savedConnection = await dbHelpers.getSetting<string>('nwc_connection');
-		if (savedConnection) {
-			await connect(savedConnection);
+		if (!savedConnection) {
+			return; // No saved connection, nothing to reconnect
 		}
+
+		// Pre-flight check: verify NWC relay is reachable before attempting full connect
+		// This prevents long timeouts when the relay is down
+		const relayUrl = NWCClient.extractRelayUrl(savedConnection);
+		if (relayUrl) {
+			const isHealthy = await relayManager.quickHealthCheck(relayUrl, 3000);
+			if (!isHealthy) {
+				console.warn(`[Wallet] NWC relay unreachable (${relayUrl}), skipping reconnect`);
+				// Don't set error state - this is a graceful skip, not a failure
+				// The wallet will remain disconnected and can be reconnected manually
+				return;
+			}
+		}
+
+		await connect(savedConnection);
 	}
 
 	/** Refresh balance */

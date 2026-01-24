@@ -71,9 +71,10 @@
 			}
 
 			// Connect with timeout (don't block UI if relays are slow)
+			// Increased from 3s to 5s for better reliability on slower connections
 			const connectPromise = ndkService.connect();
 			const timeoutPromise = new Promise((_, reject) =>
-				setTimeout(() => reject(new Error('Connection timeout')), 3000),
+				setTimeout(() => reject(new Error('Connection timeout')), 5000),
 			);
 
 			try {
@@ -87,27 +88,49 @@
 
 			// Initialize wallet, cashu, WoT and load messages if previously connected
 			// Each service is wrapped in try-catch so one failure doesn't block others
+			// Services are initialized in parallel for faster startup
 			if (authStore.isAuthenticated) {
-				// Initialize Lightning wallet (NWC) - non-critical
-				try {
-					await walletStore.init();
-				} catch (e) {
-					console.warn('Wallet init failed (non-critical):', e);
-				}
+				// Initialize non-critical services in parallel with individual timeouts
+				const initPromises: Promise<void>[] = [];
 
-				// Initialize Cashu eCash - non-critical
-				try {
-					await cashuStore.init();
-				} catch (e) {
-					console.warn('Cashu init failed (non-critical):', e);
-				}
+				// Initialize Lightning wallet (NWC) - non-critical with timeout
+				initPromises.push(
+					Promise.race([
+						walletStore.init(),
+						new Promise<void>((_, reject) =>
+							setTimeout(() => reject(new Error('Wallet timeout')), 10000)
+						)
+					]).catch((e) => {
+						console.warn('Wallet init failed (non-critical):', e);
+					})
+				);
 
-				// Initialize Web of Trust - non-critical
-				try {
-					await wotStore.init();
-				} catch (e) {
-					console.warn('WoT init failed (non-critical):', e);
-				}
+				// Initialize Cashu eCash - non-critical with timeout
+				initPromises.push(
+					Promise.race([
+						cashuStore.init(),
+						new Promise<void>((_, reject) =>
+							setTimeout(() => reject(new Error('Cashu timeout')), 10000)
+						)
+					]).catch((e) => {
+						console.warn('Cashu init failed (non-critical):', e);
+					})
+				);
+
+				// Initialize Web of Trust - non-critical with timeout
+				initPromises.push(
+					Promise.race([
+						wotStore.init(),
+						new Promise<void>((_, reject) =>
+							setTimeout(() => reject(new Error('WoT timeout')), 10000)
+						)
+					]).catch((e) => {
+						console.warn('WoT init failed (non-critical):', e);
+					})
+				);
+
+				// Wait for all non-critical services (they handle their own errors)
+				await Promise.allSettled(initPromises);
 
 				// Load conversations to track unread count
 				messagesStore.loadConversations();

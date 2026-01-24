@@ -102,6 +102,16 @@ class NDKService {
 
 	/** Initialize NDK with optional signer */
 	async init(signer?: NDKSigner): Promise<void> {
+		// Clean stale relays from IndexedDB first
+		try {
+			const removedCount = await relayManager.cleanStaleRelays();
+			if (removedCount > 0) {
+				console.info(`[AURA] Cleaned ${removedCount} stale relays from storage`);
+			}
+		} catch (e) {
+			console.warn('[AURA] Failed to clean stale relays:', e);
+		}
+
 		// Get stored relays or use defaults
 		const storedRelays = await db.relays.toArray();
 		const relayUrls =
@@ -109,9 +119,14 @@ class NDKService {
 				? storedRelays.filter((r) => r.read || r.write).map((r) => r.url)
 				: DEFAULT_RELAYS;
 
+		// Filter out blacklisted relays
+		const activeRelays = relayUrls.filter((url) => !relayManager.isBlacklisted(url));
+
 		this._ndk = new NDK({
-			explicitRelayUrls: relayUrls,
-			autoConnectUserRelays: true
+			explicitRelayUrls: activeRelays,
+			// Disable auto-connect to unknown relays from user's NIP-65 list
+			// This prevents connection attempts to potentially dead/unknown relays
+			autoConnectUserRelays: false
 		});
 
 		// Initialize sub-modules
@@ -125,6 +140,40 @@ class NDKService {
 		if (signer) {
 			await this.setSigner(signer);
 		}
+	}
+
+	/**
+	 * Connect to user's preferred relays with validation
+	 * Validates relay health before adding to the pool
+	 */
+	async connectUserRelays(relayUrls: string[]): Promise<{ connected: string[]; failed: string[] }> {
+		const connected: string[] = [];
+		const failed: string[] = [];
+
+		for (const url of relayUrls) {
+			// Skip if already connected or blacklisted
+			if (relayManager.isBlacklisted(url)) {
+				failed.push(url);
+				continue;
+			}
+
+			// Quick health check before adding
+			const isHealthy = await relayManager.quickHealthCheck(url, 3000);
+			if (!isHealthy) {
+				relayManager.blacklistRelay(url);
+				failed.push(url);
+				continue;
+			}
+
+			try {
+				await relayManager.addRelay(url);
+				connected.push(url);
+			} catch {
+				failed.push(url);
+			}
+		}
+
+		return { connected, failed };
 	}
 
 	/** Connect to relays */

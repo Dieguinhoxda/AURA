@@ -35,16 +35,19 @@ export interface RelayManagerConfig {
 	minConnectedRelays: number;
 	/** Timeout for relay operations (ms) */
 	operationTimeout: number;
+	/** Duration to blacklist failing relays (ms) */
+	blacklistDuration: number;
 }
 
-/** Default configuration */
+/** Default configuration - optimized for faster failure detection */
 const DEFAULT_CONFIG: RelayManagerConfig = {
-	maxRetries: 5,
-	baseRetryDelay: 1000,
-	maxRetryDelay: 30000,
+	maxRetries: 3,              // Reduced from 5 for faster failure
+	baseRetryDelay: 500,        // Reduced from 1000 for faster retry
+	maxRetryDelay: 15000,       // Reduced from 30000
 	healthCheckInterval: 60000,
 	minConnectedRelays: 2,
-	operationTimeout: 10000
+	operationTimeout: 8000,     // Reduced from 10000
+	blacklistDuration: 300000   // 5 minutes
 };
 
 /** Default relays */
@@ -77,9 +80,168 @@ export class RelayManager {
 	private _retryCount: Map<string, number> = new Map();
 	private _healthCheckTimer: ReturnType<typeof setInterval> | null = null;
 	private _listeners: Set<(event: RelayEvent) => void> = new Set();
+	/** Blacklist of relays that have failed - url -> expiry timestamp */
+	private _blacklist: Map<string, number> = new Map();
 
 	constructor(config: Partial<RelayManagerConfig> = {}) {
 		this._config = { ...DEFAULT_CONFIG, ...config };
+	}
+
+	/** Check if a relay is blacklisted */
+	isBlacklisted(url: string): boolean {
+		const expiry = this._blacklist.get(url);
+		if (!expiry) return false;
+		
+		if (Date.now() > expiry) {
+			// Blacklist expired, remove it
+			this._blacklist.delete(url);
+			return false;
+		}
+		return true;
+	}
+
+	/** Blacklist a relay for the configured duration */
+	blacklistRelay(url: string, duration?: number): void {
+		const blacklistDuration = duration ?? this._config.blacklistDuration;
+		const expiry = Date.now() + blacklistDuration;
+		this._blacklist.set(url, expiry);
+		this.emit({ type: 'blacklisted', url, expiry });
+	}
+
+	/** Remove a relay from the blacklist */
+	unblacklistRelay(url: string): void {
+		if (this._blacklist.has(url)) {
+			this._blacklist.delete(url);
+			this.emit({ type: 'unblacklisted', url });
+		}
+	}
+
+	/** Get all blacklisted relays */
+	getBlacklistedRelays(): string[] {
+		const now = Date.now();
+		const blacklisted: string[] = [];
+		
+		for (const [url, expiry] of this._blacklist) {
+			if (now <= expiry) {
+				blacklisted.push(url);
+			} else {
+				// Clean up expired entries
+				this._blacklist.delete(url);
+			}
+		}
+		
+		return blacklisted;
+	}
+
+	/**
+	 * Quick health check for a relay URL
+	 * Attempts a WebSocket connection with a short timeout
+	 * Does NOT add the relay to the pool
+	 */
+	async quickHealthCheck(url: string, timeout: number = 3000): Promise<boolean> {
+		// Skip if blacklisted
+		if (this.isBlacklisted(url)) {
+			return false;
+		}
+
+		// Validate URL format
+		if (!url.startsWith('wss://') && !url.startsWith('ws://')) {
+			return false;
+		}
+
+		return new Promise<boolean>((resolve) => {
+			let ws: WebSocket | null = null;
+			let resolved = false;
+
+			const cleanup = () => {
+				if (ws) {
+					ws.onopen = null;
+					ws.onerror = null;
+					ws.onclose = null;
+					try {
+						ws.close();
+					} catch {
+						// Ignore close errors
+					}
+					ws = null;
+				}
+			};
+
+			const timeoutId = setTimeout(() => {
+				if (!resolved) {
+					resolved = true;
+					cleanup();
+					resolve(false);
+				}
+			}, timeout);
+
+			try {
+				ws = new WebSocket(url);
+
+				ws.onopen = () => {
+					if (!resolved) {
+						resolved = true;
+						clearTimeout(timeoutId);
+						cleanup();
+						resolve(true);
+					}
+				};
+
+				ws.onerror = () => {
+					if (!resolved) {
+						resolved = true;
+						clearTimeout(timeoutId);
+						cleanup();
+						resolve(false);
+					}
+				};
+
+				ws.onclose = () => {
+					if (!resolved) {
+						resolved = true;
+						clearTimeout(timeoutId);
+						cleanup();
+						resolve(false);
+					}
+				};
+			} catch {
+				if (!resolved) {
+					resolved = true;
+					clearTimeout(timeoutId);
+					cleanup();
+					resolve(false);
+				}
+			}
+		});
+	}
+
+	/**
+	 * Clean stale relays from IndexedDB
+	 * Removes relays that are not in the default list and haven't connected recently
+	 */
+	async cleanStaleRelays(maxAge: number = 7 * 24 * 60 * 60 * 1000): Promise<number> {
+		const storedRelays = await db.relays.toArray();
+		const now = Date.now();
+		let removedCount = 0;
+
+		for (const relay of storedRelays) {
+			// Keep default relays
+			if (DEFAULT_RELAYS.includes(relay.url) || BACKUP_RELAYS.includes(relay.url)) {
+				continue;
+			}
+
+			const health = this._health.get(relay.url);
+			
+			// Remove if no health data or hasn't connected in maxAge
+			if (!health || (health.lastConnected && now - health.lastConnected > maxAge)) {
+				await db.relays.delete(relay.url);
+				this._health.delete(relay.url);
+				this._retryCount.delete(relay.url);
+				removedCount++;
+			}
+		}
+
+		return removedCount;
 	}
 
 	/** Set NDK instance */
@@ -161,6 +323,14 @@ export class RelayManager {
 			});
 		}
 
+		// Skip blacklisted relays
+		if (this.isBlacklisted(url)) {
+			throw new NetworkError('Relay is temporarily blacklisted', {
+				code: ErrorCode.RELAY_CONNECTION_FAILED,
+				details: { url, blacklisted: true }
+			});
+		}
+
 		// Initialize health tracking
 		this._health.set(url, {
 			url,
@@ -183,6 +353,8 @@ export class RelayManager {
 			await this.connectRelay(url);
 		} catch (error) {
 			this.recordError(url, error instanceof Error ? error.message : 'Connection failed');
+			// Blacklist the relay on connection failure
+			this.blacklistRelay(url);
 			throw error;
 		}
 	}
@@ -191,6 +363,7 @@ export class RelayManager {
 	async removeRelay(url: string): Promise<void> {
 		this._health.delete(url);
 		this._retryCount.delete(url);
+		this._blacklist.delete(url);
 		await db.relays.delete(url);
 		// Note: NDK doesn't have a direct removeRelay method
 	}
@@ -198,6 +371,14 @@ export class RelayManager {
 	/** Connect to a specific relay with retry logic */
 	async connectRelay(url: string): Promise<void> {
 		if (!this._ndk) return;
+
+		// Skip blacklisted relays
+		if (this.isBlacklisted(url)) {
+			throw new NetworkError('Relay is temporarily blacklisted', {
+				code: ErrorCode.RELAY_CONNECTION_FAILED,
+				details: { url, blacklisted: true }
+			});
+		}
 
 		const maxRetries = this._config.maxRetries;
 		let lastError: Error | null = null;
@@ -208,6 +389,8 @@ export class RelayManager {
 				if (relay) {
 					await this.withTimeout(relay.connect(), this._config.operationTimeout);
 					this.recordSuccess(url);
+					// Remove from blacklist on successful connection
+					this.unblacklistRelay(url);
 					return;
 				}
 			} catch (error) {
@@ -220,6 +403,9 @@ export class RelayManager {
 				}
 			}
 		}
+
+		// Blacklist the relay after all retries failed
+		this.blacklistRelay(url);
 
 		throw new NetworkError(`Failed to connect to relay after ${maxRetries} attempts`, {
 			code: ErrorCode.RELAY_CONNECTION_FAILED,
@@ -372,7 +558,9 @@ export type RelayEvent =
 	| { type: 'connected'; url: string }
 	| { type: 'disconnected'; url: string }
 	| { type: 'low_connectivity'; connectedCount: number }
-	| { type: 'health_update'; health: RelayHealth };
+	| { type: 'health_update'; health: RelayHealth }
+	| { type: 'blacklisted'; url: string; expiry: number }
+	| { type: 'unblacklisted'; url: string };
 
 /** Singleton instance */
 export const relayManager = new RelayManager();

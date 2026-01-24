@@ -175,6 +175,33 @@ export class NWCClient {
 	}
 
 	/**
+	 * Extract relay URL from NWC connection string
+	 * Returns null if the connection string is invalid or missing relay
+	 * This is a lightweight method that doesn't throw, useful for pre-flight checks
+	 */
+	static extractRelayUrl(connectionString: string): string | null {
+		if (!connectionString || !connectionString.startsWith('nostr+walletconnect://')) {
+			return null;
+		}
+
+		try {
+			const url = new URL(connectionString);
+			const relayUrl = url.searchParams.get('relay');
+			if (!relayUrl) return null;
+			return decodeURIComponent(relayUrl);
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * Instance method to extract relay URL (delegates to static method)
+	 */
+	extractRelayUrl(connectionString: string): string | null {
+		return NWCClient.extractRelayUrl(connectionString);
+	}
+
+	/**
 	 * Connect to wallet
 	 */
 	async connect(connectionString: string): Promise<WalletInfo> {
