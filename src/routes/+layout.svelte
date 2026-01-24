@@ -86,12 +86,29 @@
 			await authStore.init();
 
 			// Initialize wallet, cashu, WoT and load messages if previously connected
+			// Each service is wrapped in try-catch so one failure doesn't block others
 			if (authStore.isAuthenticated) {
-				await walletStore.init();
-				// Initialize Cashu eCash
-				await cashuStore.init();
-				// Initialize Web of Trust
-				await wotStore.init();
+				// Initialize Lightning wallet (NWC) - non-critical
+				try {
+					await walletStore.init();
+				} catch (e) {
+					console.warn('Wallet init failed (non-critical):', e);
+				}
+
+				// Initialize Cashu eCash - non-critical
+				try {
+					await cashuStore.init();
+				} catch (e) {
+					console.warn('Cashu init failed (non-critical):', e);
+				}
+
+				// Initialize Web of Trust - non-critical
+				try {
+					await wotStore.init();
+				} catch (e) {
+					console.warn('WoT init failed (non-critical):', e);
+				}
+
 				// Load conversations to track unread count
 				messagesStore.loadConversations();
 			}
