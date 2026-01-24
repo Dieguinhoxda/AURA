@@ -8,6 +8,7 @@
 	import { cashuStore } from '$stores/cashu.svelte';
 	import { uiStore } from '$stores/ui.svelte';
 	import { messagesStore } from '$stores/messages.svelte';
+	import { wotStore } from '$stores/wot.svelte';
 	import ndkService, { eventPublisher } from '$services/ndk';
 	import { dbHelpers } from '$db';
 	import { browser } from '$app/environment';
@@ -29,6 +30,7 @@
 	import Zap from 'lucide-svelte/icons/zap';
 	import Coins from 'lucide-svelte/icons/coins';
 	import Store from 'lucide-svelte/icons/store';
+	import Bot from 'lucide-svelte/icons/bot';
 
 	let { children } = $props();
 
@@ -41,6 +43,7 @@
 		{ href: '/', icon: Home, label: 'Feed' },
 		{ href: '/search', icon: Search, label: 'Search' },
 		{ href: '/marketplace', icon: Store, label: 'Market' },
+		{ href: '/ai', icon: Bot, label: 'AI' },
 		{ href: '/notifications', icon: Bell, label: 'Alerts' },
 		{ href: '/messages', icon: MessageCircle, label: 'Messages' },
 		{ href: '/wallet', icon: Wallet, label: 'Wallet' },
@@ -82,11 +85,13 @@
 			// Initialize auth state
 			await authStore.init();
 
-			// Initialize wallet, cashu, and load messages if previously connected
+			// Initialize wallet, cashu, WoT and load messages if previously connected
 			if (authStore.isAuthenticated) {
 				await walletStore.init();
 				// Initialize Cashu eCash
 				await cashuStore.init();
+				// Initialize Web of Trust
+				await wotStore.init();
 				// Load conversations to track unread count
 				messagesStore.loadConversations();
 			}

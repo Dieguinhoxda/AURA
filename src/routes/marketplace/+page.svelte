@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { marketplaceStore, type ProductListing, type ProductCategory, type ProductCondition } from '$stores/marketplace.svelte';
 	import { authStore } from '$stores/auth.svelte';
+	import { wotStore } from '$stores/wot.svelte';
 	import { Avatar, AvatarImage, AvatarFallback } from '$components/ui/avatar';
 	import { Button } from '$components/ui/button';
 	import { Input } from '$components/ui/input';
@@ -11,6 +12,7 @@
 	import { Skeleton } from '$components/ui/skeleton';
 	import { EmptyState } from '$components/ui/empty-state';
 	import { Spinner } from '$components/ui/spinner';
+	import { TrustBadge, TrustFilter } from '$components/wot';
 	import { truncatePubkey, formatRelativeTime } from '$lib/utils';
 	import Search from 'lucide-svelte/icons/search';
 	import Store from 'lucide-svelte/icons/store';
@@ -67,6 +69,13 @@
 	onDestroy(() => {
 		marketplaceStore.cleanup();
 	});
+
+	// Filter listings by WoT
+	const filteredListings = $derived(
+		wotStore.isInitialized
+			? marketplaceStore.listings.filter(l => wotStore.passesFilter(l.pubkey))
+			: marketplaceStore.listings
+	);
 
 	// Apply filters
 	async function applyFilters() {
@@ -130,6 +139,10 @@
 					<h1 class="text-xl font-bold">Marketplace</h1>
 				</div>
 				<div class="flex items-center gap-2">
+					<!-- Trust Filter -->
+					{#if wotStore.isInitialized}
+						<TrustFilter />
+					{/if}
 					<Button
 						variant="ghost"
 						size="icon"
@@ -183,8 +196,9 @@
 					<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 						<!-- Category -->
 						<div class="space-y-1">
-							<label class="text-sm font-medium">Category</label>
+							<label for="category-filter" class="text-sm font-medium">Category</label>
 							<select
+								id="category-filter"
 								bind:value={selectedCategory}
 								class="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
 								onchange={() => applyFilters()}
@@ -197,8 +211,9 @@
 
 						<!-- Min Price -->
 						<div class="space-y-1">
-							<label class="text-sm font-medium">Min Price (sats)</label>
+							<label for="min-price-filter" class="text-sm font-medium">Min Price (sats)</label>
 							<Input
+								id="min-price-filter"
 								type="number"
 								value={minPrice === '' ? '' : String(minPrice)}
 								oninput={(e) => {
@@ -212,8 +227,9 @@
 
 						<!-- Max Price -->
 						<div class="space-y-1">
-							<label class="text-sm font-medium">Max Price (sats)</label>
+							<label for="max-price-filter" class="text-sm font-medium">Max Price (sats)</label>
 							<Input
+								id="max-price-filter"
 								type="number"
 								value={maxPrice === '' ? '' : String(maxPrice)}
 								oninput={(e) => {
@@ -282,11 +298,11 @@
 					</Card>
 				{/each}
 			</div>
-		{:else if marketplaceStore.listings.length === 0}
+		{:else if filteredListings.length === 0}
 			<EmptyState
 				icon={Store}
 				title="No listings found"
-				description="Be the first to list something for sale!"
+				description={wotStore.filterLevel !== 'all' ? "Try adjusting your trust filter to see more listings." : "Be the first to list something for sale!"}
 				variant="muted"
 				size="lg"
 				actionLabel={authStore.isAuthenticated ? "Create Listing" : undefined}
@@ -295,10 +311,10 @@
 		{:else}
 			<!-- Listings Grid/List -->
 			<div class="p-4 {viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}">
-				{#each marketplaceStore.listings as listing (listing.id)}
+				{#each filteredListings as listing (listing.id)}
 					<Card class="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group">
 						<!-- Image -->
-						<div class="relative aspect-[4/3] bg-muted overflow-hidden">
+						<div class="relative aspect-4/3 bg-muted overflow-hidden">
 							{#if listing.images.length > 0}
 								<img
 									src={listing.images[0]}
@@ -307,7 +323,7 @@
 									loading="lazy"
 								/>
 							{:else}
-								<div class="w-full h-full flex items-center justify-center text-4xl bg-gradient-to-br from-muted to-muted/50">
+								<div class="w-full h-full flex items-center justify-center text-4xl bg-linear-to-br from-muted to-muted/50">
 									{categoryIcons[listing.category] || '📦'}
 								</div>
 							{/if}
@@ -348,8 +364,9 @@
 											{(listing.seller?.display_name || listing.seller?.name || '?')[0]?.toUpperCase()}
 										</AvatarFallback>
 									</Avatar>
-									<span class="text-sm text-muted-foreground">
+									<span class="text-sm text-muted-foreground flex items-center gap-1">
 										{listing.seller?.display_name || listing.seller?.name || truncatePubkey(listing.pubkey)}
+										<TrustBadge pubkey={listing.pubkey} size="sm" />
 									</span>
 								</a>
 
